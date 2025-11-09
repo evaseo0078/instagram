@@ -1,11 +1,18 @@
-import 'dart:async'; // ⭐️ 1. 타이머를 위한 import
+import 'dart:async';
+import 'dart:io'; // ⭐️ 1. File 이미지를 표시하기 위해 import
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:instagram/screens/comments_screen.dart';
 import 'package:instagram/utils/colors.dart';
 
 class PostWidget extends StatefulWidget {
-  const PostWidget({super.key});
+  // ⭐️ 2. 부모로부터 게시물 데이터를 받을 "그릇"
+  final Map<String, dynamic> postData;
+
+  const PostWidget({
+    super.key,
+    required this.postData, // ⭐️ 3. 필수로 받도록 수정
+  });
 
   @override
   State<PostWidget> createState() => _PostWidgetState();
@@ -13,34 +20,63 @@ class PostWidget extends StatefulWidget {
 
 class _PostWidgetState extends State<PostWidget> {
   bool _isLiked = false;
-  bool _isBigHeartVisible = false; // ⭐️ 2. 큰 하트 애니메이션용 상태 변수
+  bool _isBigHeartVisible = false;
 
-  // 댓글 리스트 (소유)
-  final List<Map<String, dynamic>> _comments = [
-    {
-      "username": "ta_junhyuk",
-      "comment": "I love puang",
-      "time": "1s ago",
-      "isLiked": false,
-    }
-  ];
+  // ⭐️ 4. 댓글 리스트를 postData로부터 가져옴
+  // (이제 이 위젯이 댓글을 "소유"하지 않음)
+  late List<Map<String, dynamic>> _comments;
 
-  // ⭐️ 3. 더블 탭 했을 때 호출될 함수
+  @override
+  void initState() {
+    super.initState();
+    // ⭐️ 5. 부모가 준 데이터로 댓글 리스트 초기화
+    _comments = widget.postData['commentsList'];
+  }
+
   void _handleDoubleTapLike() {
-    // 이미 '좋아요' 상태여도 애니메이션은 보여줄 수 있지만,
-    // 인스타그램은 보통 '좋아요'가 아닐 때만 애니메이션을 보여줍니다.
-    // 여기서는 '좋아요' 상태로 만들고 애니메이션을 실행합니다.
     setState(() {
-      _isLiked = true; // '좋아요' 상태로 변경
-      _isBigHeartVisible = true; // 큰 하트 보이기
+      _isLiked = true;
+      _isBigHeartVisible = true;
     });
-
-    // ⭐️ 4. 0.5초(500ms) 후에 큰 하트를 다시 숨김
     Timer(const Duration(milliseconds: 500), () {
       setState(() {
         _isBigHeartVisible = false;
       });
     });
+  }
+
+  // ⭐️ 6. 이미지 위젯을 동적으로 반환하는 함수
+  // (새로 올린 'File' 이미지와 기존 'Asset' 이미지를 구분하기 위함)
+  Widget _buildPostImage() {
+    // 'imagePath'는 File 객체일 수도, String(asset 경로)일 수도 있음
+    final imagePath = widget.postData['imagePath'];
+
+    if (imagePath is File) {
+      // 새로 추가된 'File' 이미지인 경우
+      return Image.file(
+        imagePath,
+        height: 350,
+        width: double.infinity,
+        fit: BoxFit.cover,
+      );
+    } else if (imagePath is String) {
+      // 기존 'Asset' 이미지인 경우 (나중에 DB에서 가져올 땐 'NetworkImage' 사용)
+      return Image.asset(
+        imagePath, // 예: 'assets/images/my_image.png'
+        height: 350,
+        width: double.infinity,
+        fit: BoxFit.cover,
+      );
+    } else {
+      // 임시 회색 박스 (기본값)
+      return Container(
+        height: 350,
+        color: Colors.grey[300],
+        child: const Center(
+          child: Icon(Icons.image, size: 100, color: Colors.grey),
+        ),
+      );
+    }
   }
 
   @override
@@ -54,60 +90,56 @@ class _PostWidgetState extends State<PostWidget> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
-              // ( ... 헤더 코드는 동일 ... )
               children: [
-                const CircleAvatar(radius: 18, backgroundColor: Colors.grey),
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Colors.grey,
+                  // ⭐️ 7. 'userImage' 사용 (지금은 없으니 임시)
+                  // backgroundImage: NetworkImage(widget.postData['userImage']),
+                ),
                 const SizedBox(width: 10),
-                const Text('ta_junhyuk',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  widget.postData['username'], // ⭐️ 8. 'username' 사용
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 const Spacer(),
                 IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
               ],
             ),
           ),
 
-          // ⭐️⭐️ 2. 게시물 이미지 (Stack + GestureDetector로 변경) ⭐️⭐️
+          // 2. 게시물 이미지
           GestureDetector(
-            onDoubleTap: _handleDoubleTapLike, // ⭐️ 5. 두 번 탭 감지!
+            onDoubleTap: _handleDoubleTapLike,
             child: Stack(
-              alignment: Alignment.center, // ⭐️ 6. 큰 하트를 중앙에 띄우기 위함
+              alignment: Alignment.center,
               children: [
-                // 2-1. 원본 이미지 (회색 박스)
-                Container(
-                  height: 350,
-                  color: Colors.grey[300],
-                  child: const Center(
-                    child: Icon(Icons.image, size: 100, color: Colors.grey),
-                  ),
-                ),
-
-                // 2-2. 큰 하트 (애니메이션)
+                // ⭐️ 9. _buildPostImage() 함수로 이미지 표시
+                _buildPostImage(),
                 AnimatedOpacity(
-                  // ⭐️ 7. _isBigHeartVisible 값에 따라 투명도 조절
                   opacity: _isBigHeartVisible ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 200), // 0.2초간 fade
+                  duration: const Duration(milliseconds: 200),
                   child: const Icon(
                     CupertinoIcons.heart_fill,
                     color: Colors.white,
-                    size: 100, // 큰 하트 아이콘
+                    size: 100,
                   ),
                 ),
               ],
             ),
           ),
 
-          // 3. 아이콘 버튼 (좋아요, 댓글, 공유, 저장)
+          // 3. 아이콘 버튼
           Row(
             children: [
               IconButton(
-                // ⭐️ 8. 하트 버튼은 그냥 _isLiked 상태만 토글
                 icon: Icon(
                   _isLiked ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
                   color: _isLiked ? Colors.red : primaryColor,
                 ),
                 onPressed: () {
                   setState(() {
-                    _isLiked = !_isLiked; // 큰 하트 애니메이션 없이 상태만 변경
+                    _isLiked = !_isLiked;
                   });
                 },
               ),
@@ -118,13 +150,13 @@ class _PostWidgetState extends State<PostWidget> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => CommentsScreen(
+                        // ⭐️ 10. _comments 리스트 전달
                         commentsList: _comments,
                       ),
                     ),
                   );
                 },
               ),
-              // ( ... 나머지 아이콘 버튼 ... )
               IconButton(
                 icon: const Icon(CupertinoIcons.paperplane),
                 onPressed: () {},
@@ -139,7 +171,6 @@ class _PostWidgetState extends State<PostWidget> {
 
           // 4. 좋아요 수, 캡션, 댓글 수
           Padding(
-            // ( ... 나머지 코드는 동일 ... )
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,20 +180,20 @@ class _PostWidgetState extends State<PostWidget> {
                       style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 RichText(
-                  text: const TextSpan(
-                    style: TextStyle(color: primaryColor),
+                  text: TextSpan(
+                    style: const TextStyle(color: primaryColor),
                     children: [
                       TextSpan(
-                        text: 'ta_junhyuk ',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        text: '${widget.postData['username']} ', // ⭐️
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      TextSpan(text: 'I love puang'),
+                      TextSpan(text: widget.postData['caption']), // ⭐️
                     ],
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'View all ${_comments.length} comments',
+                  'View all ${_comments.length} comments', // ⭐️
                   style: const TextStyle(color: secondaryColor),
                 ),
               ],
