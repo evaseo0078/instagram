@@ -1,12 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:instagram/utils/colors.dart';
+import 'package:instagram/utils/colors.dart'; // ⚠️ 경로 확인
 
 class CommentsScreen extends StatefulWidget {
-  // ⭐️ 1. 부모(PostWidget)로부터 댓글 리스트를 전달받을 "그릇" 준비
+  // 1. 부모(PostWidget)로부터 댓글 리스트를 전달받을 "그릇"
   final List<Map<String, dynamic>> commentsList;
 
-  // ⭐️ 2. 생성자를 수정하여 'commentsList'를 필수로 받도록 함
+  // 2. 생성자를 수정하여 'commentsList'를 필수로 받도록 함
   const CommentsScreen({
     super.key,
     required this.commentsList,
@@ -19,9 +19,6 @@ class CommentsScreen extends StatefulWidget {
 class _CommentsScreenState extends State<CommentsScreen> {
   final TextEditingController _commentController = TextEditingController();
   bool _canPost = false;
-
-  // ⭐️ 3. 여기서 리스트를 직접 만들지 않습니다! (PostWidget이 주인이므로)
-  // final List<Map<String, dynamic>> _comments = [ ... ]; // <-- ⭐️ 이 줄 삭제
 
   @override
   void initState() {
@@ -42,8 +39,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
   void _postComment() {
     if (_canPost) {
       setState(() {
-        // ⭐️ 4. 부모가 전달해준 'widget.commentsList'에 직접 추가합니다.
-        // (이렇게 하면 PostWidget이 가진 원본 리스트가 수정됩니다)
+        // 3. 부모가 전달해준 'widget.commentsList'에 직접 추가
         widget.commentsList.add({
           "username": "ta_junhyuk",
           "comment": _commentController.text,
@@ -60,22 +56,32 @@ class _CommentsScreenState extends State<CommentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // ⭐️ 키보드가 올라올 때 화면이 밀리는 것을 방지
+      resizeToAvoidBottomInset: false,
+
       appBar: AppBar(
-        // ( ... AppBar 코드는 동일 ... )
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Text('Comments'),
+        centerTitle: false,
       ),
+
       body: Column(
         children: [
+          // ⭐️ 1. 댓글 목록 (스크롤 영역)
           Expanded(
             child: ListView.builder(
-              // ⭐️ 5. 부모가 준 'widget.commentsList'의 길이를 사용
               itemCount: widget.commentsList.length,
               itemBuilder: (context, index) {
-                // ⭐️ 6. 부모가 준 'widget.commentsList'의 데이터를 사용
                 final commentData = widget.commentsList[index];
 
                 return ListTile(
-                  // ( ... ListTile 코드는 동일 ... )
+                  leading: const CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Colors.grey,
+                  ),
                   title: RichText(
                     text: TextSpan(
                       style: const TextStyle(color: primaryColor),
@@ -99,7 +105,6 @@ class _CommentsScreenState extends State<CommentsScreen> {
                     ),
                     onPressed: () {
                       setState(() {
-                        // ⭐️ 7. 'widget.commentsList'의 데이터를 수정
                         commentData["isLiked"] = !commentData["isLiked"];
                       });
                     },
@@ -109,12 +114,31 @@ class _CommentsScreenState extends State<CommentsScreen> {
             ),
           ),
 
-          // ⭐️ (하단 댓글 입력창 코드는 동일)
+          // ⭐️⭐️ 2. 댓글 입력창 (사라졌던 부분!)
           Container(
-            // ( ... Container, Row, TextField 코드는 동일 ... )
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              border: Border(
+                top: BorderSide(color: Colors.grey[300]!),
+              ),
+            ),
             child: Row(
               children: [
-                // ( ... CircleAvatar, Expanded(TextField) ... )
+                const CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Colors.grey,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextField(
+                    controller: _commentController,
+                    decoration: const InputDecoration(
+                      hintText: 'Add a comment...',
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(Icons.arrow_upward_rounded),
                   color: _canPost ? Colors.blue : secondaryColor,
