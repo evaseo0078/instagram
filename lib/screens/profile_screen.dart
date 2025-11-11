@@ -1,10 +1,14 @@
+// 📍 lib/screens/profile_screen.dart (업데이트된 최종본)
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:instagram/utils/colors.dart';
+import 'package:instagram/screens/edit_profile_screen.dart'; // ⭐️ 1. 새로 만든 파일 import
 
-class ProfileScreen extends StatelessWidget {
+// ⭐️ 2. StatelessWidget -> StatefulWidget로 변경
+class ProfileScreen extends StatefulWidget {
   final List<Map<String, dynamic>> allPosts;
-  final void Function() onAddPostPressed; // AppBar의 '+' 버튼용 함수
+  final void Function() onAddPostPressed;
 
   const ProfileScreen({
     super.key,
@@ -12,6 +16,40 @@ class ProfileScreen extends StatelessWidget {
     required this.onAddPostPressed,
   });
 
+  @override
+  // ⭐️ 3. State 객체 생성
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+// ⭐️ 4. State 클래스 (모든 로직이 여기로 이동)
+class _ProfileScreenState extends State<ProfileScreen> {
+  // ⭐️ 5. 닉네임과 바이오를 "기억"할 변수 (초기값 설정)
+  String _name = 'ta_junhyuk';
+  String _bio = "I'm gonna be the God of Flutter!";
+
+  // ⭐️ 6. EditProfileScreen으로 이동하는 함수 (새로 추가)
+  Future<void> _navigateToEditProfile() async {
+    // 7. "Edit profile" 화면을 띄우고, "현재" 닉네임/바이오를 전달
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProfileScreen(
+          currentName: _name,
+          currentBio: _bio,
+        ),
+      ),
+    );
+
+    // 8. "Done"을 눌러 돌아왔다면 (result가 Map 형태일 경우)
+    if (result != null && result is Map<String, String>) {
+      setState(() {
+        _name = result['name']!; // ⭐️ 9. 변수 업데이트 (화면 새로고침)
+        _bio = result['bio']!; // ⭐️ 10. 변수 업데이트 (화면 새로고침)
+      });
+    }
+  }
+
+  // ( ... 기존 _buildStatColumn, _buildPostGrid 함수는 동일 ... )
   Widget _buildStatColumn(String count, String label) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -30,13 +68,10 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // ⭐️ 1. 게시물 격자(Grid)를 만드는 위젯 (수정됨)
   Widget _buildPostGrid(List<Map<String, dynamic>> myPosts) {
-    // ⭐️ 2. (영상 03:48) "No posts yet" 문구 (기존 로직)
     if (myPosts.isEmpty) {
       return const Center(child: Text("No posts yet"));
     }
-
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -45,13 +80,12 @@ class ProfileScreen extends StatelessWidget {
         crossAxisSpacing: 1.5,
         mainAxisSpacing: 1.5,
       ),
-      // ⭐️ 3. itemCount: 게시물 갯수 + 1 (마지막 '+' 버튼)
       itemCount: myPosts.length + 1,
       itemBuilder: (context, index) {
-        // ⭐️ 4. (영상 02:25) 마지막 index일 경우 '+' 버튼 반환
         if (index == myPosts.length) {
           return GestureDetector(
-            onTap: onAddPostPressed, // ⭐️ 5. AppBar와 동일한 포스팅 함수 연결
+            // ⭐️ 부모(widget)로부터 함수 접근
+            onTap: widget.onAddPostPressed,
             child: Container(
               color: Colors.grey[200],
               child: const Icon(
@@ -62,11 +96,8 @@ class ProfileScreen extends StatelessWidget {
             ),
           );
         }
-
-        // ⭐️ 6. 마지막이 아니면, 기존 썸네일 표시
         final postData = myPosts[index];
         final imagePath = postData['imagePath'];
-
         if (imagePath is File) {
           return Image.file(imagePath, fit: BoxFit.cover);
         } else if (imagePath is String) {
@@ -80,21 +111,22 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ⭐️ 7. "중앙 리스트"에서 "내 게시물"만 필터링
-    final List<Map<String, dynamic>> myPosts =
-        allPosts.where((post) => post['username'] == 'ta_junhyuk').toList();
+    // ⭐️ 부모(widget)로부터 포스트 리스트 접근
+    final List<Map<String, dynamic>> myPosts = widget.allPosts
+        .where((post) => post['username'] == 'ta_junhyuk')
+        .toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'ta_junhyuk',
-          style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
+        title: Text(
+          _name, // ⭐️ 11. 하드코딩된 텍스트 대신 _name 변수 사용
+          style:
+              const TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
         ),
         actions: [
-          // ⭐️ 8. AppBar의 '+' 버튼 (이것도 그대로 둠)
           IconButton(
             icon: const Icon(Icons.add_box_outlined),
-            onPressed: onAddPostPressed,
+            onPressed: widget.onAddPostPressed, // ⭐️ 부모(widget) 함수 사용
           ),
           IconButton(
             icon: const Icon(Icons.menu),
@@ -107,7 +139,6 @@ class ProfileScreen extends StatelessWidget {
         child: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
-              // ⭐️ 9. 프로필 정보 헤더 (기존과 동일)
               SliverList(
                 delegate: SliverChildListDelegate(
                   [
@@ -130,19 +161,20 @@ class ProfileScreen extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          const Text(
-                            'ta_junhyuk',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                          Text(
+                            _name, // ⭐️ 12. 하드코딩된 텍스트 대신 _name 변수 사용
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
-                            "I'm gonna be the God of Flutter!",
+                          Text(
+                            _bio, // ⭐️ 13. 하드코딩된 텍스트 대신 _bio 변수 사용
                           ),
                           const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton(
-                              onPressed: () {},
+                              // ⭐️ 14. _navigateToEditProfile 함수 연결
+                              onPressed: _navigateToEditProfile,
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: Colors.grey[400]!),
                                 shape: RoundedRectangleBorder(
@@ -161,7 +193,7 @@ class ProfileScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              // ⭐️ 10. 탭바 (기존과 동일)
+              // ( ... 탭바는 동일 ... )
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _SliverAppBarDelegate(
@@ -178,10 +210,9 @@ class ProfileScreen extends StatelessWidget {
               ),
             ];
           },
-          // ⭐️ 11. 탭바 내용 (수정된 _buildPostGrid 사용)
           body: TabBarView(
             children: [
-              _buildPostGrid(myPosts), // ⭐️ (수정된 함수)
+              _buildPostGrid(myPosts),
               const Center(child: Text('Tagged posts')),
             ],
           ),
@@ -191,17 +222,14 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-// (SliverAppBarDelegate Helper 클래스는 동일)
+// ( ... SliverAppBarDelegate Helper 클래스는 동일 ... )
 class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   _SliverAppBarDelegate(this._tabBar);
-
   final TabBar _tabBar;
-
   @override
   double get minExtent => _tabBar.preferredSize.height;
   @override
   double get maxExtent => _tabBar.preferredSize.height;
-
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
