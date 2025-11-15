@@ -1,11 +1,10 @@
-// 📍 lib/screens/profile_screen.dart (업데이트된 최종본)
+// 📍 lib/screens/profile_screen.dart (업데이트된 최종본 2)
 
-import 'dart:io';
+import 'dart:io'; // ⭐️ 1. File import
 import 'package:flutter/material.dart';
 import 'package:instagram/utils/colors.dart';
-import 'package:instagram/screens/edit_profile_screen.dart'; // ⭐️ 1. 새로 만든 파일 import
+import 'package:instagram/screens/edit_profile_screen.dart';
 
-// ⭐️ 2. StatelessWidget -> StatefulWidget로 변경
 class ProfileScreen extends StatefulWidget {
   final List<Map<String, dynamic>> allPosts;
   final void Function() onAddPostPressed;
@@ -17,39 +16,39 @@ class ProfileScreen extends StatefulWidget {
   });
 
   @override
-  // ⭐️ 3. State 객체 생성
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-// ⭐️ 4. State 클래스 (모든 로직이 여기로 이동)
 class _ProfileScreenState extends State<ProfileScreen> {
-  // ⭐️ 5. 닉네임과 바이오를 "기억"할 변수 (초기값 설정)
+  // ⭐️ 2. 닉네임, 바이오, "프로필 사진 File" 변수
   String _name = 'ta_junhyuk';
   String _bio = "I'm gonna be the God of Flutter!";
+  File? _profilePic; // ⭐️
 
-  // ⭐️ 6. EditProfileScreen으로 이동하는 함수 (새로 추가)
+  // ⭐️ 3. EditProfileScreen으로 이동하는 함수 (업데이트됨)
   Future<void> _navigateToEditProfile() async {
-    // 7. "Edit profile" 화면을 띄우고, "현재" 닉네임/바이오를 전달
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => EditProfileScreen(
           currentName: _name,
           currentBio: _bio,
+          currentProfilePic: _profilePic, // ⭐️ 4. 현재 사진 전달
         ),
       ),
     );
 
-    // 8. "Done"을 눌러 돌아왔다면 (result가 Map 형태일 경우)
-    if (result != null && result is Map<String, String>) {
+    // ⭐️ 5. 돌아온 결과(Map)에서 'image'도 받음
+    if (result != null && result is Map<String, dynamic>) {
       setState(() {
-        _name = result['name']!; // ⭐️ 9. 변수 업데이트 (화면 새로고침)
-        _bio = result['bio']!; // ⭐️ 10. 변수 업데이트 (화면 새로고침)
+        _name = result['name']!;
+        _bio = result['bio']!;
+        _profilePic = result['image']; // ⭐️ 6. 프로필 사진 업데이트
       });
     }
   }
 
-  // ( ... 기존 _buildStatColumn, _buildPostGrid 함수는 동일 ... )
+  // ( ... _buildStatColumn, _buildPostGrid 함수는 이전과 동일 ... )
   Widget _buildStatColumn(String count, String label) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -84,7 +83,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       itemBuilder: (context, index) {
         if (index == myPosts.length) {
           return GestureDetector(
-            // ⭐️ 부모(widget)로부터 함수 접근
             onTap: widget.onAddPostPressed,
             child: Container(
               color: Colors.grey[200],
@@ -111,7 +109,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ⭐️ 부모(widget)로부터 포스트 리스트 접근
     final List<Map<String, dynamic>> myPosts = widget.allPosts
         .where((post) => post['username'] == 'ta_junhyuk')
         .toList();
@@ -119,14 +116,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _name, // ⭐️ 11. 하드코딩된 텍스트 대신 _name 변수 사용
+          _name,
           style:
               const TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_box_outlined),
-            onPressed: widget.onAddPostPressed, // ⭐️ 부모(widget) 함수 사용
+            onPressed: widget.onAddPostPressed,
           ),
           IconButton(
             icon: const Icon(Icons.menu),
@@ -150,9 +147,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const CircleAvatar(
+                              // ⭐️ 7. 프로필 사진 (업데이트됨)
+                              CircleAvatar(
                                 radius: 40,
-                                backgroundColor: Colors.grey,
+                                backgroundColor: Colors.grey[300],
+                                // ⭐️ 8. _profilePic으로 사진 표시
+                                backgroundImage: _profilePic != null
+                                    ? FileImage(_profilePic!)
+                                    : null,
+                                child: _profilePic == null
+                                    ? const Icon(Icons.person,
+                                        size: 40, color: Colors.white)
+                                    : null,
                               ),
                               _buildStatColumn(
                                   myPosts.length.toString(), 'Posts'),
@@ -162,19 +168,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            _name, // ⭐️ 12. 하드코딩된 텍스트 대신 _name 변수 사용
+                            _name,
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _bio, // ⭐️ 13. 하드코딩된 텍스트 대신 _bio 변수 사용
+                            _bio,
                           ),
                           const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton(
-                              // ⭐️ 14. _navigateToEditProfile 함수 연결
-                              onPressed: _navigateToEditProfile,
+                              onPressed: _navigateToEditProfile, // ⭐️
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: Colors.grey[400]!),
                                 shape: RoundedRectangleBorder(
@@ -222,7 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// ( ... SliverAppBarDelegate Helper 클래스는 동일 ... )
+// ( ... SliverAppBarDelegate Helper 클래스는 이전과 동일 ... )
 class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   _SliverAppBarDelegate(this._tabBar);
   final TabBar _tabBar;
