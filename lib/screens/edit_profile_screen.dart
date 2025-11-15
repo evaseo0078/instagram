@@ -1,8 +1,11 @@
-// 📍 lib/screens/edit_profile_screen.dart (영상 반영 최종본)
+// 📍 lib/screens/edit_profile_screen.dart (레이아웃 수정 최종본)
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:instagram/screens/edit_bio_screen.dart';
+import 'package:instagram/screens/edit_filter_screen.dart';
+import 'package:instagram/screens/edit_name_screen.dart';
+import 'package:instagram/screens/gallery_picker_screen.dart';
 import 'package:instagram/utils/colors.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -33,23 +36,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _bioController = TextEditingController(text: widget.currentBio);
     _newProfilePicFile = widget.currentProfilePic;
 
-    // (영상 03:34) 화면 로드 직후 팝업 띄우기 (이전과 동일)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showAvatarDialog(context);
     });
   }
 
-  // (영상 03:34) "Create your avatar" 팝업 (이전과 동일)
+  // (아바타 팝업은 이전과 동일)
   void _showAvatarDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
+          backgroundColor: backgroundColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16.0),
           ),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40.0),
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -60,29 +64,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const SizedBox(height: 24),
                 const Text(
                   'Create your avatar',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: primaryColor),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Get your own personalized stickers to share in stories and chats.',
+                  'Get your own personalized\nstickers to share in stories\nand chats.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: secondaryColor),
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
+                  child: TextButton(
                     onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                    child: const Text(
+                      'Create avatar',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
-                    child: const Text('Create avatar',
-                        style: TextStyle(color: Colors.white)),
                   ),
                 ),
+                const Divider(height: 1, color: secondaryColor),
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
@@ -91,7 +99,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     },
                     child: const Text(
                       'Not now',
-                      style: TextStyle(color: primaryColor),
+                      style: TextStyle(
+                        color: primaryColor,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),
@@ -120,17 +131,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _pickImageFromGallery() async {
     Navigator.of(context).pop();
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
-    if (image != null) {
-      setState(() {
-        _newProfilePicFile = File(image.path);
-      });
-    }
+    final File? originalFile = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const GalleryPickerScreen(),
+      ),
+    );
+    if (originalFile == null) return;
+
+    final File? filteredFile = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditFilterScreen(imageFile: originalFile),
+      ),
+    );
+    if (filteredFile == null) return;
+
+    setState(() {
+      _newProfilePicFile = filteredFile;
+    });
   }
 
-  // ⭐️ 1. (영상 03:37) 프로필 사진 옵션 바텀시트 (UI 수정됨)
+  // (바텀시트는 이전과 동일)
   void _showProfilePicOptions() {
     showModalBottomSheet(
       context: context,
@@ -138,163 +161,218 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
+      isScrollControlled: true,
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16), // ⭐️
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 드래그 핸들
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[400],
-                  borderRadius: BorderRadius.circular(8),
+        return SingleChildScrollView(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-              ),
-              // ⭐️ 2. (영상 03:37 / image_eb412d.png) 상단 사진 2개 추가
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundColor: Colors.grey[300],
-                    backgroundImage: _newProfilePicFile != null
-                        ? FileImage(_newProfilePicFile!)
-                        : null,
-                    child: _newProfilePicFile == null
-                        ? const Icon(Icons.person,
-                            size: 32, color: Colors.white)
-                        : null,
-                  ),
-                  const SizedBox(width: 16),
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundColor: Colors.grey[850], // ⭐️
-                    child: const Icon(Icons.tag_faces_outlined, // ⭐️
-                        size: 32,
-                        color: Colors.white),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              ListTile(
-                leading: const Icon(Icons.photo_library_outlined),
-                title: const Text('Choose from library'),
-                onTap: _pickImageFromGallery,
-              ),
-              ListTile(
-                // ⭐️ (영상 03:38) 페이스북 아이콘 (가장 근접한 표준 아이콘)
-                leading: const Icon(Icons.facebook),
-                title: const Text('Import from Facebook'),
-                onTap: () {},
-              ),
-              ListTile(
-                leading: const Icon(Icons.camera_alt_outlined),
-                title: const Text('Take photo'),
-                onTap: () {},
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title:
-                    const Text('Delete', style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  setState(() {
-                    _newProfilePicFile = null;
-                  });
-                },
-              ),
-
-              // ⭐️ 3. (영상 03:38 / image_eb412d.png) 하단 텍스트 추가
-              const Divider(),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
-                child: RichText(
-                  textAlign: TextAlign.center,
-                  text: const TextSpan(
-                    style: TextStyle(color: secondaryColor, fontSize: 12),
-                    children: [
-                      TextSpan(
-                          text:
-                              'Your profile picture and avatar are visible to everyone on and off Instagram.\n'),
-                      TextSpan(
-                        text: 'Learn more.',
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        // ⭐️ 여기에 'onTap' 핸들러를 추가하여 링크로 만들 수 있습니다.
-                        // recognizer: TapGestureRecognizer()..onTap = () { ... }
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 32,
+                      backgroundColor: Colors.grey[300],
+                      backgroundImage: _newProfilePicFile != null
+                          ? FileImage(_newProfilePicFile!)
+                          : null,
+                      child: _newProfilePicFile == null
+                          ? const Icon(Icons.person,
+                              size: 32, color: Colors.white)
+                          : null,
+                    ),
+                    const SizedBox(width: 16),
+                    CircleAvatar(
+                      radius: 32,
+                      backgroundColor: Colors.grey[850],
+                      child: Image.asset(
+                        'assets/images/avatar_icon.png',
+                        width: 40,
+                        height: 40,
+                        color: Colors.white,
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_outlined),
+                  title: const Text('Choose from library'),
+                  onTap: _pickImageFromGallery,
+                ),
+                ListTile(
+                  leading: const Icon(Icons.facebook),
+                  title: const Text('Import from Facebook'),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.camera_alt_outlined),
+                  title: const Text('Take photo'),
+                  onTap: () {},
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title:
+                      const Text('Delete', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    setState(() {
+                      _newProfilePicFile = null;
+                    });
+                  },
+                ),
+                const Divider(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                  child: RichText(
+                    textAlign: TextAlign.center,
+                    text: const TextSpan(
+                      style: TextStyle(color: secondaryColor, fontSize: 12),
+                      children: [
+                        TextSpan(
+                            text:
+                                'Your profile picture and avatar are visible to everyone on and off Instagram.\n'),
+                        TextSpan(
+                          text: 'Learn more.',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  // (Helper 위젯들은 이전과 동일)
-  Widget _buildTextField(
-      {required String label, required TextEditingController controller}) {
+  // (Name 화면 이동은 이전과 동일)
+  Future<void> _navigateToName() async {
+    final newName = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditNameScreen(currentName: _nameController.text),
+      ),
+    );
+    if (newName != null && newName is String) {
+      setState(() {
+        _nameController.text = newName;
+      });
+    }
+  }
+
+  // (Bio 화면 이동은 이전과 동일)
+  Future<void> _navigateToBio() async {
+    final newBio = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditBioScreen(currentBio: _bioController.text),
+      ),
+    );
+    if (newBio != null && newBio is String) {
+      setState(() {
+        _bioController.text = newBio;
+      });
+    }
+  }
+
+  // ⭐️ --- (이하 Helper 위젯 전체 수정) --- ⭐️
+
+  // 패턴 1: Name, Bio
+  Widget _buildTappableLabelValue(
+      {required String label,
+      required String value,
+      required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(color: secondaryColor, fontSize: 12)),
+          const SizedBox(height: 2), // ⭐️ 간격 수정
+          Text(value, style: const TextStyle(fontSize: 16)),
+          const SizedBox(height: 8), // ⭐️ 간격 수정
+          const Divider(thickness: 0.5, color: secondaryColor),
+        ],
+      ),
+    );
+  }
+
+  // 패턴 2: Username
+  Widget _buildStaticLabelValue(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
             style: const TextStyle(color: secondaryColor, fontSize: 12)),
-        TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            border: UnderlineInputBorder(
-              borderSide: BorderSide(color: secondaryColor),
-            ),
-            focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: primaryColor),
-            ),
-            contentPadding: EdgeInsets.symmetric(vertical: 4),
-          ),
-        ),
+        const SizedBox(height: 2),
+        Text(value, style: const TextStyle(fontSize: 16)),
+        const SizedBox(height: 8),
+        const Divider(thickness: 0.5, color: secondaryColor),
       ],
     );
   }
 
-  Widget _buildNavigationRow(String title) {
-    return ListTile(
-      title: Text(title),
-      trailing: const Icon(Icons.chevron_right, color: secondaryColor),
-      onTap: () {},
-      contentPadding: EdgeInsets.zero,
-    );
-  }
-
-  Widget _buildValueRow(String title, String value) {
-    return ListTile(
-      title: Text(title),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+  // 패턴 3: Pronouns, Add link, Add banners
+  Widget _buildTappableValue(String value, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value, style: const TextStyle(color: secondaryColor)),
-          const SizedBox(width: 8),
-          const Icon(Icons.chevron_right, color: secondaryColor),
+          // ⭐️ 라벨이 없으므로 값만 표시 (패딩용 빈 컨테이너 추가)
+          const SizedBox(height: 14), // 라벨+SizedBox 높이와 비슷하게
+          Text(value, style: const TextStyle(fontSize: 16)),
+          const SizedBox(height: 8),
+          const Divider(thickness: 0.5, color: secondaryColor),
         ],
       ),
-      onTap: () {},
-      contentPadding: EdgeInsets.zero,
     );
   }
 
-  Widget _buildStaticRow(String title) {
-    return ListTile(
-      title: Text(title),
-      onTap: () {},
-      contentPadding: EdgeInsets.zero,
+  // 패턴 4: Gender, Music
+  Widget _buildTappableValueRow(
+      String title, String value, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          const SizedBox(height: 14), // ⭐️ 간격 추가
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 16)),
+              Row(
+                children: [
+                  Text(value, style: const TextStyle(color: secondaryColor)),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.chevron_right,
+                      color: secondaryColor, size: 20),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Divider(thickness: 0.5, color: secondaryColor),
+        ],
+      ),
     );
   }
 
@@ -302,12 +380,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // ⭐️ 4. "Cancel" 텍스트 -> "뒤로가기 화살표" (영상 03:40)
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: primaryColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        // ⭐️ 5. "centerTitle: false"로 왼쪽 정렬 (영상 03:40)
         title: const Text('Edit profile',
             style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: false,
@@ -335,7 +411,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // ⭐️ 6. (영상 03:37) 왼쪽 사진에 클릭 이벤트 추가
                       GestureDetector(
                         onTap: _showProfilePicOptions,
                         child: CircleAvatar(
@@ -351,21 +426,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                       ),
                       const SizedBox(width: 24),
-                      // ⭐️ 7. (영상 03:36) 오른쪽 아바타에 클릭 이벤트 + UI 수정
                       GestureDetector(
                         onTap: () => _showAvatarDialog(context),
                         child: CircleAvatar(
                           radius: 40,
-                          backgroundColor: Colors.grey[850], // ⭐️
-                          child: const Icon(Icons.tag_faces_outlined, // ⭐️
-                              size: 40,
-                              color: Colors.white),
+                          backgroundColor: Colors.grey[850],
+                          child: Image.asset(
+                            'assets/images/avatar_icon.png',
+                            width: 40,
+                            height: 40,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  // ⭐️ 8. (영상 03:37) 텍스트 버튼에도 클릭 이벤트 유지
                   TextButton(
                     onPressed: _showProfilePicOptions,
                     child: const Text(
@@ -379,36 +454,47 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 24),
 
-            // (이하 레이아웃은 이전과 동일)
-            _buildTextField(label: 'Name', controller: _nameController),
-            const SizedBox(height: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Username',
-                    style: TextStyle(color: secondaryColor, fontSize: 12)),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text(
-                    'ta_junhyuk',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ),
-                const Divider(thickness: 0.5, color: secondaryColor),
-              ],
+            // ⭐️ --- (이하 build 메소드 레이아웃 전체 수정) --- ⭐️
+
+            // Name (패턴 1)
+            _buildTappableLabelValue(
+              label: 'Name',
+              value: _nameController.text, // ⭐️ 컨트롤러 값 사용
+              onTap: _navigateToName,
             ),
-            const SizedBox(height: 8),
-            _buildStaticRow('Pronouns'),
-            const SizedBox(height: 8),
-            _buildTextField(label: 'Bio', controller: _bioController),
-            const SizedBox(height: 16),
-            _buildStaticRow('Add link'),
-            _buildStaticRow('Add banners'),
-            _buildValueRow('Gender', 'Prefer not to say'),
-            _buildValueRow('Music', 'Add music to your profile'),
+            // ⭐️ Sizedbox 간격 제거 -> 위젯 자체에 간격 포함됨
+
+            // Username (패턴 2)
+            _buildStaticLabelValue('Username', 'ta_junhyuk'),
+
+            // Pronouns (패턴 3)
+            _buildTappableValue('Pronouns', () {}),
+
+            // Bio (패턴 1)
+            _buildTappableLabelValue(
+              label: 'Bio',
+              value: _bioController.text, // ⭐️ 컨트롤러 값 사용
+              onTap: _navigateToBio,
+            ),
+
+            // Add link (패턴 3)
+            _buildTappableValue('Add link', () {}),
+
+            // Add banners (패턴 3)
+            _buildTappableValue('Add banners', () {}),
+
+            // Gender (패턴 4)
+            _buildTappableValueRow('Gender', 'Prefer not to say', () {}),
+
+            // Music (패턴 4)
+            _buildTappableValueRow('Music', 'Add music to your profile', () {}),
+
+            // ⭐️ 간격/구분선 수정
             const SizedBox(height: 16),
             const Divider(thickness: 0.5, color: secondaryColor),
             const SizedBox(height: 16),
+
+            // Bottom Links
             const Text(
               'Switch to professional account',
               style: TextStyle(color: Colors.blue, fontSize: 16),
