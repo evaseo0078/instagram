@@ -1,10 +1,14 @@
+// 📍 lib/screens/edit_filter_screen.dart (성능 문제 해결 + Processing 팝업)
+
 import 'dart:io';
-import 'dart:typed_data'; // 1. 이미지 바이트(Uint8List)를 다루기 위해 import
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img; // 2. 'image' 패키지 import
+import 'package:image/image.dart' as img;
 import 'package:instagram/utils/colors.dart';
+// ⭐️ 1. 로딩 유틸리티 import (오류 해결!)
+import 'package:instagram/utils/loading_utils.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:photofilters/photofilters.dart'; // 3. 'photofilters' 패키지 import
+import 'package:photofilters/photofilters.dart';
 import 'package:photofilters/filters/filters.dart';
 
 class EditFilterScreen extends StatefulWidget {
@@ -15,15 +19,15 @@ class EditFilterScreen extends StatefulWidget {
 }
 
 class _EditFilterScreenState extends State<EditFilterScreen> {
-  late Uint8List _imageBytes; // 원본 (인코딩된) 바이트
-  late File _filteredImageFile; // 화면에 표시될 최종 파일
+  late Uint8List _imageBytes;
+  late File _filteredImageFile;
   late List<Filter> _filters;
-  bool _isLoading = true;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _filteredImageFile = widget.imageFile; // 처음엔 원본으로 시작
+    _filteredImageFile = widget.imageFile;
     _filters = [
       NoFilter(),
       AddictiveBlueFilter(),
@@ -42,47 +46,69 @@ class _EditFilterScreenState extends State<EditFilterScreen> {
 
   Future<void> _loadImage() async {
     final bytes = await widget.imageFile.readAsBytes();
-    _imageBytes = bytes; // 썸네일용 원본 바이트 저장
+    _imageBytes = bytes;
     setState(() {
-      _isLoading = false;
+      _isInitialized = true;
     });
   }
 
-  // ⭐️ 4. [버그 수정] 필터를 적용하는 올바른 로직
+  // ⭐️ 2. (성능 개선) 필터 적용 로직을 비동기로 수정
   Future<void> _applyFilter(Filter filter) async {
-    setState(() {
-      _isLoading = true; // 로딩 시작
-    });
+    // ⭐️ 3. 로딩 팝업 띄우기 (영상 3:41)
+    showLoadingDialog(context, 'Processing');
 
-    // 1. 원본 이미지를 디코딩
-    img.Image image = img.decodeImage(_imageBytes)!;
+    try {
+      // ⭐️ (성능 개선) heavy-lifting 작업을 Future로 감싸서 비동기 처리
+      await Future(() {
+        img.Image image = img.decodeImage(_imageBytes)!;
+        Uint8List rawBytes = image.getBytes(format: img.Format.rgba);
+        filter.apply(rawBytes, image.width, image.height);
+        img.Image filteredImage = img.Image.fromBytes(
+          image.width,
+          image.height,
+          rawBytes,
+          format: img.Format.rgba,
+        );
+        final filteredBytes = img.encodeJpg(filteredImage);
+        return filteredBytes;
+      }).then((filteredBytes) async {
+        final tempDir = await getTemporaryDirectory();
+        final tempPath =
+            '${tempDir.path}/filtered_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        _filteredImageFile = File(tempPath);
+        await _filteredImageFile.writeAsBytes(filteredBytes);
+      });
 
-    // 2. 이미지의 원시(Raw) RGBA 바이트를 가져옴
-    Uint8List rawBytes = image.getBytes(format: img.Format.rgba);
+      setState(() {
+        // 상태 업데이트
+      });
+    } catch (e) {
+      print("Filter error: $e");
+    } finally {
+      // ⭐️ 4. 로딩 팝업 닫기
+      hideLoadingDialog(context);
+    }
+  }
 
-    // 3. 필터 적용 (이 함수는 rawBytes 리스트 자체를 수정함)
-    filter.apply(rawBytes, image.width, image.height);
+  // ⭐️ 5. (성능 개선) 썸네일 생성도 비동기로 처리 (FutureBuilder의 future)
+  Future<List<int>> _generateThumbnail(Filter filter) async {
+    return await Future(() {
+      final img.Image? image = img.decodeImage(_imageBytes);
+      if (image == null) return _imageBytes.toList();
 
-    // 4. 수정된 rawBytes로부터 새 img.Image 객체 생성
-    img.Image filteredImage = img.Image.fromBytes(
-      image.width,
-      image.height,
-      rawBytes,
-      format: img.Format.rgba, // RGBA 형식으로 다시 조립
-    );
+      // 썸네일용으로 이미지 크기 줄이기 (성능 향상)
+      final img.Image thumbnail = img.copyResize(image, width: 100);
 
-    // 5. 새 이미지를 JPG로 다시 인코딩
-    final filteredBytes = img.encodeJpg(filteredImage);
+      final bytes = thumbnail.getBytes(format: img.Format.rgba);
+      filter.apply(bytes, thumbnail.width, thumbnail.height);
 
-    // 6. 임시 파일로 저장 (기존 로직 동일)
-    final tempDir = await getTemporaryDirectory();
-    final tempPath =
-        '${tempDir.path}/filtered_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    _filteredImageFile = File(tempPath);
-    await _filteredImageFile.writeAsBytes(filteredBytes);
-
-    setState(() {
-      _isLoading = false; // 로딩 끝
+      final img.Image filteredImage = img.Image.fromBytes(
+        thumbnail.width,
+        thumbnail.height,
+        bytes,
+        format: img.Format.rgba,
+      );
+      return img.encodeJpg(filteredImage);
     });
   }
 
@@ -97,9 +123,7 @@ class _EditFilterScreenState extends State<EditFilterScreen> {
         title: const Text('Edit'),
         actions: [
           TextButton(
-            onPressed: _isLoading
-                ? null // 로딩 중에는 Next 버튼 비활성화
-                : () => Navigator.of(context).pop(_filteredImageFile),
+            onPressed: () => Navigator.of(context).pop(_filteredImageFile),
             child: const Text(
               'Next',
               style: TextStyle(
@@ -111,19 +135,16 @@ class _EditFilterScreenState extends State<EditFilterScreen> {
           )
         ],
       ),
-      // ⭐️ 5. 로딩 중일 땐 화면 전체에 로딩 표시
-      body: _isLoading
+      body: !_isInitialized
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // 6. 메인 이미지 (정상 표시)
                 Container(
                   height: 350,
                   color: Colors.grey[900],
                   child: Image.file(_filteredImageFile, fit: BoxFit.contain),
                 ),
                 const SizedBox(height: 16),
-                // 7. 필터 썸네일 리스트 (정상 표시)
                 Expanded(
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
@@ -145,24 +166,9 @@ class _EditFilterScreenState extends State<EditFilterScreen> {
                               SizedBox(
                                 width: 100,
                                 height: 100,
+                                // ⭐️ 6. (성능 개선) 썸네일 생성 함수 연결
                                 child: FutureBuilder<List<int>>(
-                                  future: Future(() {
-                                    final img.Image? image =
-                                        img.decodeImage(_imageBytes);
-                                    if (image == null) return _imageBytes;
-
-                                    final bytes = image.getBytes();
-                                    filter.apply(
-                                        bytes, image.width, image.height);
-
-                                    final filteredImage = img.Image.fromBytes(
-                                      image.width,
-                                      image.height,
-                                      bytes,
-                                    );
-
-                                    return img.encodeJpg(filteredImage);
-                                  }),
+                                  future: _generateThumbnail(filter),
                                   builder: (context, snapshot) {
                                     if (!snapshot.hasData) {
                                       return const Center(

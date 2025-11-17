@@ -1,6 +1,7 @@
+// 📍 lib/screens/gallery_picker_screen.dart (영상 UI 수정본)
+
 import 'dart:io';
 import 'package:flutter/material.dart';
-// ⭐️ 1. 방금 설치한 패키지 import (필수!)
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -52,7 +53,8 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
     });
   }
 
-  void _onNextPressed() {
+  // ⭐️ 1. "Next" -> "Done" (영상 3:40)
+  void _onDonePressed() {
     if (_selectedImageFile != null) {
       Navigator.of(context).pop(_selectedImageFile);
     }
@@ -66,12 +68,21 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Recents'),
+        // ⭐️ 2. "Recents" 텍스트를 드롭다운 모양으로 변경
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Text('Recents', style: TextStyle(fontWeight: FontWeight.bold)),
+            Icon(Icons.arrow_drop_down),
+          ],
+        ),
+        centerTitle: false, // ⭐️ 3. 타이틀 왼쪽 정렬
         actions: [
+          // ⭐️ 4. "Next" -> "Done" 버튼으로 변경
           TextButton(
-            onPressed: _onNextPressed,
+            onPressed: _onDonePressed,
             child: const Text(
-              'Next',
+              'Done',
               style: TextStyle(
                 color: Colors.blue,
                 fontWeight: FontWeight.bold,
@@ -111,7 +122,6 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      // ⭐️ 2. AssetEntityImage 위젯 (이제 정상 작동)
                       AssetEntityImage(
                         asset,
                         isOriginal: false,

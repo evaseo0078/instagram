@@ -1,12 +1,14 @@
-// 📍 lib/screens/edit_profile_screen.dart (아이콘, 정렬, 오타 수정 완료)
+// 📍 lib/screens/edit_profile_screen.dart (모든 오류 수정 최종본)
 
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:instagram/screens/edit_bio_screen.dart';
-import 'package:instagram/screens/edit_filter_screen.dart';
+import 'package:instagram/screens/edit_filter_screen.dart'; // (게시물용으로 여전히 필요)
 import 'package:instagram/screens/edit_name_screen.dart';
 import 'package:instagram/screens/gallery_picker_screen.dart';
 import 'package:instagram/utils/colors.dart';
+// ⭐️ 1. 로딩 유틸리티 import (오류 해결!)
+import 'package:instagram/utils/loading_utils.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final String currentName;
@@ -28,6 +30,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _bioController;
   File? _newProfilePicFile;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -36,13 +39,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _bioController = TextEditingController(text: widget.currentBio);
     _newProfilePicFile = widget.currentProfilePic;
 
-    // (영상 03:34) 화면 로드 직후 팝업 띄우기
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showAvatarDialog(context);
     });
   }
 
-  // (영상 03:34 / 스크린샷 image_54fa84.png) 아바타 팝업 (⭐️ 스크린샷과 일치하도록 수정)
+  // (영상 03:34) 아바타 팝업
   void _showAvatarDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -52,17 +54,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16.0),
           ),
-          // ⭐️ (영상/스크린샷) 팝업 가로 폭을 더 좁게
           insetPadding: const EdgeInsets.symmetric(horizontal: 64.0),
           child: Container(
-            // ⭐️ (스크린샷) 버튼 영역을 고려한 하단 패딩 (원본 0)
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // ⭐️ 2. (스크린샷 213838.png 기준)
+                // ⭐️ 아바타 팝업의 이미지를 Asset으로 복구
                 Image.asset(
-                  'assets/images/avatar_promo.png',
+                  'assets/images/avatar_promo.png', // ⭐️ 이 Asset이 필요합니다!
                   height: 100,
+                  // ⭐️ 만약 이 파일도 없다면, 임시 아이콘으로 대체하세요:
+                  errorBuilder: (context, error, stackTrace) {
+                    print("ERROR: 'assets/images/avatar_promo.png' not found.");
+                    return const Icon(Icons.people,
+                        size: 100, color: primaryColor);
+                  },
                 ),
                 const SizedBox(height: 24),
                 const Text(
@@ -79,7 +87,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   style: TextStyle(fontSize: 14, color: secondaryColor),
                 ),
                 const SizedBox(height: 24),
-                // ⭐️ 1. (스크린샷) SizedBox(width: double.infinity) 부활
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
@@ -94,14 +101,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                   ),
                 ),
-                // ⭐️ 2. (스크린샷) Divider 부활
                 const Divider(
                   height: 1,
                   color: secondaryColor,
-                  indent: 16, // 스크린샷과 유사하게 좌우 여백 적용
+                  indent: 16,
                   endIndent: 16,
                 ),
-                // ⭐️ 3. (스크린샷) SizedBox(width: double.infinity) 부활
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
@@ -132,41 +137,52 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  // "Done" 버튼 눌렀을 때
-  void _saveAndReturn() {
-    Navigator.of(context).pop({
-      'name': _nameController.text,
-      'bio': _bioController.text,
-      'image': _newProfilePicFile,
+  // "Done" 버튼 (저장 로직)
+  Future<void> _saveAndReturn() async {
+    if (_isSaving) return;
+    setState(() {
+      _isSaving = true;
     });
+
+    // "Done" 누르면 "Saving..." 팝업 (영상엔 없지만 로딩 처리를 위해 추가)
+    showLoadingDialog(context, 'Saving...');
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    hideLoadingDialog(context);
+
+    if (mounted) {
+      Navigator.of(context).pop({
+        'name': _nameController.text,
+        'bio': _bioController.text,
+        'image': _newProfilePicFile,
+      });
+    }
   }
 
-  // (영상 03:38) 프로필 사진 변경 흐름
+  // ⭐️ 3. (영상 03:38) 프로필 사진 변경 흐름 (필터 스킵)
   Future<void> _pickImageFromGallery() async {
     Navigator.of(context).pop(); // 1. 바텀시트 닫기
 
-    // 2. (영상 03:39) 갤러리 화면
+    // 2. 갤러리 화면 (영상 03:39)
     final File? originalFile = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => const GalleryPickerScreen(),
       ),
     );
-    if (originalFile == null) return;
+    if (originalFile == null) return; // 갤러리에서 "X" 누름
 
-    // 3. (영상 03:41) 필터 화면
-    final File? filteredFile = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditFilterScreen(imageFile: originalFile),
-      ),
-    );
-    if (filteredFile == null) return;
+    // 3. (요청사항) 필터 화면을 건너뛰고 "Loading..." 팝업 띄우기 (영상 3:44)
+    showLoadingDialog(context, 'Loading...');
+    await Future.delayed(const Duration(milliseconds: 300)); // (영상처럼 잠시 멈춤)
 
-    // 4. (영상 03:42) 최종 이미지로 상태 업데이트
+    // 4. 최종 이미지로 상태 업데이트
     setState(() {
-      _newProfilePicFile = filteredFile;
+      _newProfilePicFile = originalFile;
     });
+
+    // 5. "Loading..." 팝업 닫기
+    hideLoadingDialog(context);
   }
 
   // (영상 03:37) 프로필 사진 바텀시트
@@ -209,28 +225,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           : null,
                     ),
                     const SizedBox(width: 16),
+                    // ⭐️ 4. 아바타 아이콘을 asset 대신 기본 아이콘으로 변경
+                    // (이건 영상의 '사람 얼굴' 아이콘 대체입니다)
                     CircleAvatar(
                       radius: 32,
                       backgroundColor: Colors.grey[850],
-                      child: Image.asset(
-                        'assets/images/avatar_icon.png',
-                        width: 40,
-                        height: 40,
-                        color: Colors.white, // 바텀시트에서는 흰색
+                      child: const Icon(
+                        Icons.face_retouching_natural,
+                        color: Colors.white,
+                        size: 32,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 ListTile(
-                  // ⭐️ 1. (영상/피그마 기준) 아이콘 변경
                   leading: const Icon(Icons.photo_outlined),
                   title: const Text('Choose from library'),
-                  onTap: _pickImageFromGallery, // ⭐️ 사진 변경 흐름 연결
+                  onTap: _pickImageFromGallery, // ⭐️ 수정된 함수 연결
                 ),
                 ListTile(
-                  // ⭐️ 2. [TODO] 이 아이콘은 애셋 이미지로 변경해야 합니다.
-                  //    (자세한 내용은 이전 채팅 답변 참고)
                   leading: const Icon(Icons.facebook),
                   title: const Text('Import from Facebook'),
                   onTap: () {},
@@ -255,7 +269,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12.0),
                   child: RichText(
-                    // ⭐️ 3. (영상 기준) textAlign: TextAlign.center 제거 (왼쪽 정렬)
                     text: const TextSpan(
                       style: TextStyle(color: secondaryColor, fontSize: 12),
                       children: [
@@ -311,9 +324,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  // --- 레이아웃 Helper 위젯 (영상/스크린샷 레이아웃/간격 최종본) ---
+  // --- 레이아웃 Helper 위젯 (변경 없음) ---
 
-  // 패턴 1: Name, Bio
   Widget _buildTappableLabelValue(
       {required String label,
       required String value,
@@ -335,7 +347,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  // 패턴 2: Username
   Widget _buildStaticLabelValue(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -350,7 +361,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  // 패턴 3: Pronouns, Add link, Add banners
   Widget _buildTappableValue(String value, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
@@ -366,7 +376,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  // 패턴 4: Gender, Music
   Widget _buildTappableValueRow(
       String title, String value, VoidCallback onTap) {
     return InkWell(
@@ -408,11 +417,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         centerTitle: false,
         actions: [
           TextButton(
-            onPressed: _saveAndReturn,
-            child: const Text(
+            onPressed: _isSaving ? null : _saveAndReturn,
+            child: Text(
               'Done',
               style: TextStyle(
-                color: Colors.blue,
+                color: _isSaving ? Colors.grey : Colors.blue,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -431,7 +440,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       GestureDetector(
-                        onTap: _showProfilePicOptions, // ⭐️ 사진 탭
+                        onTap: _showProfilePicOptions,
                         child: CircleAvatar(
                           radius: 40,
                           backgroundColor: Colors.grey[300],
@@ -446,25 +455,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
                       const SizedBox(width: 24),
                       GestureDetector(
-                        onTap: () => _showAvatarDialog(context), // ⭐️ 아바타 탭
+                        onTap: () => _showAvatarDialog(context),
+                        // ⭐️ 5. 아바타 아이콘을 asset 대신 기본 아이콘으로 변경
+                        // (이건 영상의 '사람 얼굴' 아이콘 대체입니다)
                         child: CircleAvatar(
                           radius: 40,
                           backgroundColor: Colors.grey[850],
-                          child: Image.asset(
-                            'assets/images/avatar_icon.png',
-                            width: 40,
-                            height: 40,
-                            // 메인 화면에서는 틴트 없음 (원본 검은색)
+                          child: const Icon(
+                            Icons.face_retouching_natural,
+                            color: Colors.white,
+                            size: 40,
                           ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  // ⭐️ (스크린샷 image_54fd68.png / 영상 03:53 기준)
-                  // ⭐️ 이모지(🔄) 없는 TextButton으로 다시 수정
                   TextButton(
-                    onPressed: _showProfilePicOptions, // ⭐️ 텍스트 탭
+                    onPressed: _showProfilePicOptions,
                     child: const Text(
                       'Change profile picture',
                       style: TextStyle(
@@ -500,7 +508,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
             _buildTappableValueRow('Gender', 'Prefer not to say', () {}),
 
-            // ⭐️ 4. (오타 수정) _buildTallableValueRow -> _buildTappableValueRow
             _buildTappableValueRow('Music', 'Add music to your profile', () {}),
 
             // --- 하단 링크 ---
