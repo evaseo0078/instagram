@@ -46,13 +46,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        final double dialogWidth = MediaQuery.of(context).size.width * 0.5;
         return Dialog(
           backgroundColor: backgroundColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16.0),
           ),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 40.0),
+          insetPadding: EdgeInsets.symmetric(
+              horizontal:
+                  (MediaQuery.of(context).size.width - dialogWidth) / 2),
           child: Container(
+            width: dialogWidth,
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -71,7 +75,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Get your own personalized\nstickers to share in stories\nand chats.',
+                  'Get your own personalized\nstickers to share in stories and\n chats.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: secondaryColor),
                 ),
