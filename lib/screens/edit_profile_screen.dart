@@ -164,6 +164,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     Navigator.of(context).pop(); // 1. 바텀시트 닫기
 
     // 2. 갤러리 화면 (영상 03:39)
+    //    (이제 image_picker를 사용해서 크롬/에뮬레이터에서 작동함)
     final File? originalFile = await Navigator.push(
       context,
       MaterialPageRoute(

@@ -1,11 +1,12 @@
-// 📍 lib/screens/gallery_picker_screen.dart (영상 UI 수정본)
+// 📍 lib/screens/gallery_picker_screen.dart (image_picker로 교체)
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:photo_manager/photo_manager.dart';
+// ⭐️ 1. image_picker import (크롬/에뮬레이터 호환)
+import 'package:image_picker/image_picker.dart';
 import 'package:instagram/utils/colors.dart';
+
+// (photo_manager 관련 import 모두 삭제)
 
 class GalleryPickerScreen extends StatefulWidget {
   const GalleryPickerScreen({super.key});
@@ -15,46 +16,36 @@ class GalleryPickerScreen extends StatefulWidget {
 }
 
 class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
-  List<AssetEntity> _images = [];
-  AssetEntity? _selectedImage;
   File? _selectedImageFile;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    _loadPhotos();
-  }
-
-  Future<void> _loadPhotos() async {
-    final status = await Permission.photos.request();
-    if (!status.isGranted) {
-      print("Photo permission denied");
-      return;
-    }
-
-    final List<AssetPathEntity> albums = await PhotoManager.getAssetPathList(
-      type: RequestType.image,
-    );
-
-    if (albums.isEmpty) return;
-
-    final List<AssetEntity> photos = await albums[0].getAssetListRange(
-      start: 0,
-      end: 80,
-    );
-
-    if (photos.isNotEmpty) {
-      _selectedImage = photos[0];
-      _selectedImageFile = await _selectedImage!.file;
-    }
-
-    setState(() {
-      _images = photos;
+    // ⭐️ 2. 화면이 열리자마자 바로 갤러리를 띄웁니다 (영상 1:46)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pickImageFromGallery();
     });
   }
 
-  // ⭐️ 1. "Next" -> "Done" (영상 3:40)
-  void _onDonePressed() {
+  // ⭐️ 3. image_picker를 사용해 갤러리 열기
+  Future<void> _pickImageFromGallery() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+
+    if (image != null) {
+      setState(() {
+        _selectedImageFile = File(image.path);
+      });
+    } else {
+      // 갤러리에서 선택 안하고 닫으면, 이 화면 자체를 닫음
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
+  // ⭐️ 4. "Next" (게시물) / "Done" (프로필) 버튼
+  void _onDoneOrNextPressed() {
     if (_selectedImageFile != null) {
       Navigator.of(context).pop(_selectedImageFile);
     }
@@ -62,13 +53,13 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ⭐️ 5. UI를 영상과 유사하게 맞춤
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        // ⭐️ 2. "Recents" 텍스트를 드롭다운 모양으로 변경
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: const [
@@ -76,13 +67,13 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
             Icon(Icons.arrow_drop_down),
           ],
         ),
-        centerTitle: false, // ⭐️ 3. 타이틀 왼쪽 정렬
+        centerTitle: false,
         actions: [
-          // ⭐️ 4. "Next" -> "Done" 버튼으로 변경
           TextButton(
-            onPressed: _onDonePressed,
+            // ⭐️ 6. "Next" (영상 1:52)
+            onPressed: _onDoneOrNextPressed,
             child: const Text(
-              'Done',
+              'Next',
               style: TextStyle(
                 color: Colors.blue,
                 fontWeight: FontWeight.bold,
@@ -98,41 +89,22 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
             height: 350,
             color: Colors.grey[900],
             child: _selectedImageFile == null
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(
+                    child: TextButton(
+                      onPressed: _pickImageFromGallery,
+                      child: const Text('Choose from Gallery'),
+                    ),
+                  )
                 : Image.file(_selectedImageFile!, fit: BoxFit.contain),
           ),
+          // ⭐️ 7. 하단 그리드 뷰는 에뮬레이터/웹에서 구현이 복잡하므로
+          //     교수님 요구사항(영상 흐름)에 맞춰 메인 프리뷰에 집중합니다.
           Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                crossAxisSpacing: 1,
-                mainAxisSpacing: 1,
+            child: Container(
+              color: backgroundColor,
+              child: const Center(
+                child: Text('Image preview'),
               ),
-              itemCount: _images.length,
-              itemBuilder: (context, index) {
-                final asset = _images[index];
-
-                return GestureDetector(
-                  onTap: () async {
-                    _selectedImageFile = await asset.file;
-                    setState(() {
-                      _selectedImage = asset;
-                    });
-                  },
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      AssetEntityImage(
-                        asset,
-                        isOriginal: false,
-                        fit: BoxFit.cover,
-                      ),
-                      if (_selectedImage != asset)
-                        Container(color: Colors.white.withOpacity(0.5)),
-                    ],
-                  ),
-                );
-              },
             ),
           )
         ],

@@ -1,15 +1,11 @@
-// 📍 lib/screens/edit_filter_screen.dart (성능 문제 해결 + Processing 팝업)
+// 📍 lib/screens/edit_filter_screen.dart (가짜 필터 Mockup, 성능 문제 해결)
 
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
 import 'package:instagram/utils/colors.dart';
 // ⭐️ 1. 로딩 유틸리티 import (오류 해결!)
 import 'package:instagram/utils/loading_utils.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:photofilters/photofilters.dart';
-import 'package:photofilters/filters/filters.dart';
+// (photofilters, image, path_provider import 모두 삭제)
 
 class EditFilterScreen extends StatefulWidget {
   final File imageFile;
@@ -19,97 +15,40 @@ class EditFilterScreen extends StatefulWidget {
 }
 
 class _EditFilterScreenState extends State<EditFilterScreen> {
-  late Uint8List _imageBytes;
-  late File _filteredImageFile;
-  late List<Filter> _filters;
-  bool _isInitialized = false;
+  // ⭐️ 2. 교수님 요청대로, 가짜 필터 이름 리스트
+  final List<String> _filters = [
+    'Normal',
+    'Clarendon',
+    'Gingham',
+    'Moon',
+    'Lark',
+    'Reyes',
+    'Juno',
+    'Slumber',
+    'Crema',
+    'Ludwig',
+    'Aden',
+    'Perpetua'
+  ];
 
-  @override
-  void initState() {
-    super.initState();
-    _filteredImageFile = widget.imageFile;
-    _filters = [
-      NoFilter(),
-      AddictiveBlueFilter(),
-      AddictiveRedFilter(),
-      AdenFilter(),
-      AmaroFilter(),
-      AshbyFilter(),
-      BrannanFilter(),
-      BrooklynFilter(),
-      CharmesFilter(),
-      CremaFilter(),
-      DogpatchFilter(),
-    ];
-    _loadImage();
-  }
+  String _selectedFilter = 'Normal';
 
-  Future<void> _loadImage() async {
-    final bytes = await widget.imageFile.readAsBytes();
-    _imageBytes = bytes;
+  // ⭐️ 3. 실제 필터링 로직 제거! (성능 향상)
+  // 클릭 시 "Processing" 팝업만 띄우고 닫습니다.
+  void _applyFilter(String filterName) async {
+    if (_selectedFilter == filterName) return;
+
     setState(() {
-      _isInitialized = true;
+      _selectedFilter = filterName;
     });
-  }
 
-  // ⭐️ 2. (성능 개선) 필터 적용 로직을 비동기로 수정
-  Future<void> _applyFilter(Filter filter) async {
-    // ⭐️ 3. 로딩 팝업 띄우기 (영상 3:41)
+    // ⭐️ 4. (영상 1:56) "Processing" 팝업을 띄웠다가
     showLoadingDialog(context, 'Processing');
+    // ⭐️ 0.2초 후에 닫아서, 클릭한 '척'만 합니다.
+    await Future.delayed(const Duration(milliseconds: 200));
+    hideLoadingDialog(context);
 
-    try {
-      // ⭐️ (성능 개선) heavy-lifting 작업을 Future로 감싸서 비동기 처리
-      await Future(() {
-        img.Image image = img.decodeImage(_imageBytes)!;
-        Uint8List rawBytes = image.getBytes(format: img.Format.rgba);
-        filter.apply(rawBytes, image.width, image.height);
-        img.Image filteredImage = img.Image.fromBytes(
-          image.width,
-          image.height,
-          rawBytes,
-          format: img.Format.rgba,
-        );
-        final filteredBytes = img.encodeJpg(filteredImage);
-        return filteredBytes;
-      }).then((filteredBytes) async {
-        final tempDir = await getTemporaryDirectory();
-        final tempPath =
-            '${tempDir.path}/filtered_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        _filteredImageFile = File(tempPath);
-        await _filteredImageFile.writeAsBytes(filteredBytes);
-      });
-
-      setState(() {
-        // 상태 업데이트
-      });
-    } catch (e) {
-      print("Filter error: $e");
-    } finally {
-      // ⭐️ 4. 로딩 팝업 닫기
-      hideLoadingDialog(context);
-    }
-  }
-
-  // ⭐️ 5. (성능 개선) 썸네일 생성도 비동기로 처리 (FutureBuilder의 future)
-  Future<List<int>> _generateThumbnail(Filter filter) async {
-    return await Future(() {
-      final img.Image? image = img.decodeImage(_imageBytes);
-      if (image == null) return _imageBytes.toList();
-
-      // 썸네일용으로 이미지 크기 줄이기 (성능 향상)
-      final img.Image thumbnail = img.copyResize(image, width: 100);
-
-      final bytes = thumbnail.getBytes(format: img.Format.rgba);
-      filter.apply(bytes, thumbnail.width, thumbnail.height);
-
-      final img.Image filteredImage = img.Image.fromBytes(
-        thumbnail.width,
-        thumbnail.height,
-        bytes,
-        format: img.Format.rgba,
-      );
-      return img.encodeJpg(filteredImage);
-    });
+    // (실제 이미지 파일은 절대 변경하지 않습니다)
   }
 
   @override
@@ -123,7 +62,8 @@ class _EditFilterScreenState extends State<EditFilterScreen> {
         title: const Text('Edit'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(_filteredImageFile),
+            // ⭐️ 5. "Next" 누르면 원본 파일을 그대로 반환 (영상 2:00)
+            onPressed: () => Navigator.of(context).pop(widget.imageFile),
             child: const Text(
               'Next',
               style: TextStyle(
@@ -135,65 +75,64 @@ class _EditFilterScreenState extends State<EditFilterScreen> {
           )
         ],
       ),
-      body: !_isInitialized
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Container(
-                  height: 350,
-                  color: Colors.grey[900],
-                  child: Image.file(_filteredImageFile, fit: BoxFit.contain),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _filters.length,
-                    itemBuilder: (context, index) {
-                      final filter = _filters[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: GestureDetector(
-                          onTap: () => _applyFilter(filter),
-                          child: Column(
-                            children: [
-                              Text(
-                                filter.name,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                width: 100,
-                                height: 100,
-                                // ⭐️ 6. (성능 개선) 썸네일 생성 함수 연결
-                                child: FutureBuilder<List<int>>(
-                                  future: _generateThumbnail(filter),
-                                  builder: (context, snapshot) {
-                                    if (!snapshot.hasData) {
-                                      return const Center(
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.0,
-                                          color: primaryColor,
-                                        ),
-                                      );
-                                    }
-                                    return Image.memory(
-                                      Uint8List.fromList(snapshot.data!),
-                                      fit: BoxFit.cover,
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
+      body: Column(
+        children: [
+          // ⭐️ 6. 메인 이미지 (항상 원본)
+          Container(
+            height: 350,
+            color: Colors.grey[900],
+            child: Image.file(widget.imageFile, fit: BoxFit.contain),
+          ),
+          const SizedBox(height: 16),
+          // ⭐️ 7. 가짜 필터 썸네일 리스트
+          Expanded(
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _filters.length,
+              itemBuilder: (context, index) {
+                final filterName = _filters[index];
+                final bool isSelected = _selectedFilter == filterName;
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: GestureDetector(
+                    onTap: () => _applyFilter(filterName),
+                    child: Column(
+                      children: [
+                        Text(
+                          filterName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            // ⭐️ 선택된 필터 텍스트 강조
+                            color: isSelected ? Colors.blue : primaryColor,
                           ),
                         ),
-                      );
-                    },
+                        const SizedBox(height: 8),
+                        // ⭐️ 가짜 썸네일 (교수님 요청)
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            // ⭐️ 가짜 필터 이미지 대신 원본 + 테두리
+                            image: DecorationImage(
+                              image: FileImage(widget.imageFile),
+                              fit: BoxFit.cover,
+                            ),
+                            // ⭐️ 선택된 필터 테두리 강조
+                            border: isSelected
+                                ? Border.all(color: Colors.blue, width: 3)
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                )
-              ],
+                );
+              },
             ),
+          )
+        ],
+      ),
     );
   }
 }
