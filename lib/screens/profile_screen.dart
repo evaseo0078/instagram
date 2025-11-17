@@ -1,9 +1,9 @@
-// 📍 lib/screens/profile_screen.dart (업데이트된 최종본 2)
+// 📍 lib/screens/profile_screen.dart (전체 코드)
 
-import 'dart:io'; // ⭐️ 1. File import
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:instagram/utils/colors.dart';
-import 'package:instagram/screens/edit_profile_screen.dart';
+import 'package:instagram/screens/edit_profile_screen.dart'; // ⭐️ Import
 
 class ProfileScreen extends StatefulWidget {
   final List<Map<String, dynamic>> allPosts;
@@ -20,12 +20,11 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // ⭐️ 2. 닉네임, 바이오, "프로필 사진 File" 변수
   String _name = 'ta_junhyuk';
   String _bio = "I'm gonna be the God of Flutter!";
-  File? _profilePic; // ⭐️
+  File? _profilePic;
 
-  // ⭐️ 3. EditProfileScreen으로 이동하는 함수 (업데이트됨)
+  // "Edit profile" 화면으로 이동하는 함수
   Future<void> _navigateToEditProfile() async {
     final result = await Navigator.push(
       context,
@@ -33,22 +32,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         builder: (context) => EditProfileScreen(
           currentName: _name,
           currentBio: _bio,
-          currentProfilePic: _profilePic, // ⭐️ 4. 현재 사진 전달
+          currentProfilePic: _profilePic,
         ),
       ),
     );
 
-    // ⭐️ 5. 돌아온 결과(Map)에서 'image'도 받음
+    // "Done" 버튼으로 돌아왔을 때 값 업데이트
     if (result != null && result is Map<String, dynamic>) {
       setState(() {
         _name = result['name']!;
         _bio = result['bio']!;
-        _profilePic = result['image']; // ⭐️ 6. 프로필 사진 업데이트
+        _profilePic = result['image'];
       });
     }
   }
 
-  // ( ... _buildStatColumn, _buildPostGrid 함수는 이전과 동일 ... )
+  // (Helper 함수들)
   Widget _buildStatColumn(String count, String label) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -116,7 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _name,
+          _name, // ⭐️ 변수 사용
           style:
               const TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
         ),
@@ -147,13 +146,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // ⭐️ 7. 프로필 사진 (업데이트됨)
                               CircleAvatar(
                                 radius: 40,
                                 backgroundColor: Colors.grey[300],
-                                // ⭐️ 8. _profilePic으로 사진 표시
                                 backgroundImage: _profilePic != null
-                                    ? FileImage(_profilePic!)
+                                    ? FileImage(_profilePic!) // ⭐️ 변수 사용
                                     : null,
                                 child: _profilePic == null
                                     ? const Icon(Icons.person,
@@ -168,18 +165,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            _name,
+                            _name, // ⭐️ 변수 사용
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _bio,
+                            _bio, // ⭐️ 변수 사용
                           ),
                           const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton(
-                              onPressed: _navigateToEditProfile, // ⭐️
+                              onPressed: _navigateToEditProfile, // ⭐️ 함수 연결
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: Colors.grey[400]!),
                                 shape: RoundedRectangleBorder(
@@ -198,7 +195,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
-              // ( ... 탭바는 동일 ... )
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _SliverAppBarDelegate(
@@ -227,7 +223,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// ( ... SliverAppBarDelegate Helper 클래스는 이전과 동일 ... )
+// (SliverAppBarDelegate Helper 클래스는 동일)
 class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   _SliverAppBarDelegate(this._tabBar);
   final TabBar _tabBar;

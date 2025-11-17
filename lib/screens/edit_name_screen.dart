@@ -1,4 +1,4 @@
-// 📍 lib/screens/edit_name_screen.dart (새 파일)
+// 📍 lib/screens/edit_name_screen.dart (전체 코드)
 
 import 'package:flutter/material.dart';
 import 'package:instagram/utils/colors.dart';
@@ -26,9 +26,8 @@ class _EditNameScreenState extends State<EditNameScreen> {
     super.dispose();
   }
 
-  // (영상 04:06 / image_ec25ab.png) 확인 팝업
+  // (영상 04:06) 확인 팝업
   void _showConfirmationDialog() {
-    // 팝업이 이미 떠있으면 중복 실행 방지
     if (Navigator.of(context).canPop() == false) return;
 
     final newName = _nameController.text;
@@ -37,7 +36,7 @@ class _EditNameScreenState extends State<EditNameScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: backgroundColor, // ⭐️ 라이트 모드 배경
+          backgroundColor: backgroundColor,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           content: Column(
@@ -124,7 +123,6 @@ class _EditNameScreenState extends State<EditNameScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            // (image_ec1f22.png) 헬퍼 텍스트
             const Text(
               'Help people discover your account by using the name you\'re known by: either your full name, nickname, or business name.',
               style: TextStyle(color: secondaryColor, fontSize: 12),
