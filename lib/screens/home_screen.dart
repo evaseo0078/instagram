@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:instagram/utils/colors.dart';
 import 'package:instagram/widgets/post_widget.dart';
+import 'package:instagram/screens/dm_list_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   // ⭐️ 2. "중앙 포스트 리스트"를 전달받을 그릇
@@ -28,7 +29,12 @@ class HomeScreen extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(CupertinoIcons.paperplane),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DmListScreen()),
+              );
+            },
           ),
         ],
       ),
