@@ -7,8 +7,8 @@ import 'package:instagram/widgets/post_widget.dart'; // ⭐️ PostWidget import
 import 'package:video_player/video_player.dart';
 
 class HomeScreen extends StatelessWidget {
-  // 생성자에서 데이터를 받지 않고 직접 import한 데이터를 씁니다.
-  const HomeScreen({super.key});
+  final List<dynamic> allPosts;
+  const HomeScreen({super.key, this.allPosts = const []});
 
   @override
   Widget build(BuildContext context) {
@@ -29,30 +29,34 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      // ⭐️ HOME_FEED_SCENARIO 시나리오 사용
-      body: ListView.builder(
-        itemCount: HOME_FEED_SCENARIO.length,
-        itemBuilder: (context, index) {
-          final item = HOME_FEED_SCENARIO[index];
+      body: allPosts.isEmpty
+          ? Center(
+              child: Text('No posts yet. Add a post to get started!',
+                  style: TextStyle(fontSize: 18)))
+          : ListView.builder(
+              itemCount: allPosts.length,
+              itemBuilder: (context, index) {
+                final item = allPosts[index];
 
-          switch (item.type) {
-            case FeedItemType.post:
-              return PostWidget(post: item.post!);
+                switch (item.type) {
+                  case FeedItemType.post:
+                    return PostWidget(post: item.post!);
 
-            case FeedItemType.ad:
-              return const AdWidget();
+                  case FeedItemType.ad:
+                    return const AdWidget();
 
-            case FeedItemType.reel:
-              return SingleReelWidget(videoPath: item.videoPath!);
+                  case FeedItemType.reel:
+                    return SingleReelWidget(videoPath: item.videoPath!);
 
-            case FeedItemType.suggestedReels:
-              return SuggestedReelsWidget(videoPaths: item.multiVideoPaths!);
+                  case FeedItemType.suggestedReels:
+                    return SuggestedReelsWidget(
+                        videoPaths: item.multiVideoPaths!);
 
-            default:
-              return const SizedBox.shrink();
-          }
-        },
-      ),
+                  default:
+                    return const SizedBox.shrink();
+                }
+              },
+            ),
     );
   }
 }

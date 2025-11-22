@@ -3,9 +3,10 @@ import 'dart:io';
 class PostModel {
   final String username;
   final String userProfilePicAsset;
-  final List<String> images; // ⭐️ 여기를 List<String>으로 변경
+  final List<String> images;
   final String caption;
-  final List<String> comments;
+  // ⭐️ 댓글 데이터 모델 변경: Map 리스트
+  final List<Map<String, dynamic>> comments;
   int likes;
   bool isLiked;
   final DateTime date;
@@ -15,7 +16,7 @@ class PostModel {
     required this.userProfilePicAsset,
     required this.images,
     required this.caption,
-    required this.comments,
+    required this.comments, // ⭐️ 변경된 타입 반영
     this.likes = 0,
     this.isLiked = false,
     required this.date,
