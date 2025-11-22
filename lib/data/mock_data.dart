@@ -2,77 +2,82 @@ import 'package:instagram/models/feed_item.dart';
 import 'package:instagram/models/post_model.dart';
 import 'package:instagram/models/user_model.dart';
 
-// ⭐️ 1. 유저 데이터 (계정 만들기)
-// 팔로잉 목록을 위해 다양한 캐릭터를 미리 정의합니다.
-final Map<String, UserModel> MOCK_USERS = {
-  // --- 내 계정 (Conan) ---
-  'conan': UserModel(
-    username: 'conan',
-    name: 'Conan Edogawa',
-    bio: 'Detective 🕵️‍♂️ | Soccer ⚽️',
-    profilePic: 'assets/images/profiles/conan.png',
-    followers: 4869,
-    // ⭐️ 내가 팔로우하는 사람들 (영상 4분: 팔로잉 목록에 뜰 계정들)
-    following: ['kid_go', 'ran', 'rose', 'brown', 'keroro', 'tooniverse'],
-    posts: [],
-  ),
+// ⭐️ [핵심] 게시물 자동 생성기 (틀)
+// username: 폴더명 (예: kid_go)
+// count: 게시물 개수 (예: 13)
+List<PostModel> _generatePosts(String username, String profilePic, int count) {
+  return List.generate(count, (index) {
+    int postNum = index + 1; // 1번부터 시작 (post1, post2...)
 
-  // --- 괴도 키드 (Kid Go) ---
+    // ⭐️ 각 게시물의 사진 파일 경로 (기본적으로 1장, 필요하면 리스트에 추가)
+    // 형식: assets/images/posts/{username}/post{번호}_1.jpg
+    List<String> postImages = [
+      'assets/images/posts/$username/post${postNum}_1.jpg',
+    ];
+
+    // (만약 특정 게시물에 사진이 더 있다면, 여기서 수동으로 추가하는 로직을 넣을 수도 있습니다.
+    //  일단은 기본 1장씩으로 생성하고, 영상에 나온 중요한 '여러 장' 게시물만 아래에서 따로 정의합니다.)
+
+    return PostModel(
+      username: username,
+      userProfilePicAsset: profilePic,
+      images: postImages,
+      caption: '$username\'s post #$postNum 📸', // 캡션 자동 생성
+      comments: [],
+      likes: 100 + (index * 5), // 좋아요 수도 랜덤하게
+      date: DateTime.now().subtract(Duration(days: index)), // 날짜도 하루씩 다르게
+    );
+  });
+}
+
+// ⭐️ 1. 유저 데이터 (계정 정의)
+final Map<String, UserModel> MOCK_USERS = {
+  // --- 괴도 키드 (Kid Go) : 게시물 13개 ---
   'kid_go': UserModel(
     username: 'kid_go',
-    name: 'Kaito Kid',
-    bio: 'The Phantom Thief 🎩🕊️',
-    profilePic: 'assets/images/profiles/kid_go.png',
-    followers: 1412,
-    following: ['conan'],
-    posts: [
-      // 13번째 게시물 (사진 여러 장)
-      PostModel(
-        username: 'kid_go',
-        userProfilePic: 'assets/images/profiles/kid_go.png',
-        images: [
-          'assets/images/posts/kid_go/post13_1.jpg', // ⭐️ 보내주신 파일명
-          'assets/images/posts/kid_go/post13_2.jpg',
-        ],
-        caption: 'Ladies and Gentlemen! It\'s Showtime! 🕊️',
-        comments: [],
-        likes: 10000,
-        date: DateTime.now().subtract(const Duration(hours: 2)),
-      ),
-    ],
+    name: 'Kid Go',
+    bio: 'Phantom Thief 🎩',
+    profilePicAsset: 'assets/images/profiles/kid_go.png', // png 확인
+    followerCount: 1412,
+    followingUsernames: ['conan'],
+    // ⭐️ 자동 생성기로 13개 게시물 생성!
+    posts: _generatePosts('kid_go', 'assets/images/profiles/kid_go.png', 13),
   ),
 
-  // --- 유미란 (Ran) ---
+  // --- 유미란 (Ran) : 게시물 13개 ---
   'ran': UserModel(
     username: 'ran',
     name: 'Ran Mouri',
-    bio: 'Karate Champion 🥋',
-    profilePic: 'assets/images/profiles/ran.png',
-    followers: 8000,
-    following: ['shinichi'],
-    posts: [
-      // 13번째 게시물 (윈터 느낌)
-      PostModel(
-        username: 'ran',
-        userProfilePic: 'assets/images/profiles/ran.png',
-        images: ['assets/images/posts/ran/post13_1.jpg'],
-        caption: 'Winter vibe ❄️',
-        comments: ['sonoko: So pretty!'],
-        likes: 500,
-        date: DateTime.now().subtract(const Duration(hours: 5)),
-      ),
-    ],
+    bio: 'Karate 🥋',
+    profilePicAsset: 'assets/images/profiles/ran.png',
+    followerCount: 8000,
+    followingUsernames: ['shinichi', 'sonoko'],
+    // ⭐️ 자동 생성기로 13개 게시물 생성!
+    posts: _generatePosts('ran', 'assets/images/profiles/ran.png', 13),
+  ),
+
+  // --- 코난 (내 계정) ---
+  'conan': UserModel(
+    username: 'conan',
+    name: 'Conan',
+    bio: 'Detective 🕵️‍♂️',
+    profilePicAsset: 'assets/images/profiles/conan.png',
+    followerCount: 4869,
+    // ⭐️ 내가 팔로우하는 사람들 (이게 있어야 프로필 'Following' 목록에 뜸)
+    followingUsernames: ['kid_go', 'ran', 'rose', 'brown'],
+    posts: [],
   ),
 
   // --- 홍장미 (Rose) ---
   'rose': UserModel(
     username: 'rose',
-    name: 'Haibara Ai',
+    name: 'Haibara',
     bio: 'Scientist 💊',
-    profilePic: 'assets/images/profiles/rose.png',
-    followers: 50000,
-    following: [],
-    posts: [],
+    profilePicAsset: 'assets/images/profiles/rose.png',
+    followerCount: 50000,
+    followingUsernames: [],
+    posts:
+        _generatePosts('rose', 'assets/images/profiles/rose.png', 5), // 5개 예시
   ),
 
   // --- 브라운 박사 (Brown) ---
@@ -80,67 +85,51 @@ final Map<String, UserModel> MOCK_USERS = {
     username: 'brown',
     name: 'Dr. Agasa',
     bio: 'Inventor 💡',
-    profilePic: 'assets/images/profiles/brown.png',
-    followers: 300,
-    following: [],
-    posts: [],
-  ),
-
-  // --- 케로로 ---
-  'keroro': UserModel(
-    username: 'keroro',
-    name: 'Keroro Gunso',
-    bio: 'Kero Kero ⭐',
-    profilePic: 'assets/images/profiles/keroro.png',
-    followers: 55,
-    following: [],
-    posts: [],
-  ),
-
-  // --- 투니버스 ---
-  'tooniverse': UserModel(
-    username: 'tooniverse',
-    name: 'Tooniverse',
-    bio: 'Animation Channel 📺',
-    profilePic: 'assets/images/profiles/tooniverse.png',
-    followers: 1000000,
-    following: [],
-    posts: [],
+    profilePicAsset: 'assets/images/profiles/brown.png',
+    followerCount: 300,
+    followingUsernames: [],
+    posts:
+        _generatePosts('brown', 'assets/images/profiles/brown.png', 3), // 3개 예시
   ),
 };
 
-// ⭐️ 2. 홈 피드 시나리오 (영상 2번 시나리오)
-// 영상 순서: 릴스 -> 광고 -> 키드 게시물(넘기기) -> 광고 -> 란 게시물 -> 추천 릴스
+// ⭐️ 2. 홈 피드 시나리오 (영상 순서대로 하드코딩)
+// 여기서 '특정 게시물'만 사진을 여러 장으로 바꿔줍니다.
 final List<FeedItem> HOME_FEED_SCENARIO = [
-  // 1. 릴스 (kig_go_video)
+  // 1. 릴스
   FeedItem(
     type: FeedItemType.reel,
-    videoPath: 'assets/videos/kig_go_video.mp4', // ⭐️ 파일명 확인!
+    videoPath: 'assets/videos/kig_go_video.mp4',
   ),
 
   // 2. 광고
   FeedItem(type: FeedItemType.ad),
 
-  // 3. 키드 게시물 (넘기기 가능)
+  // 3. 키드 게시물 (13번째 게시물 - 사진 여러장)
   FeedItem(
     type: FeedItemType.post,
-    post: MOCK_USERS['kid_go']!.posts[0], // 위에서 만든 게시물 가져오기
+    // ⭐️ 키드의 13번째 게시물(인덱스 0이 최신이므로 0번 가져옴)을 가져와서 사진만 수정
+    post: MOCK_USERS['kid_go']!.posts[0]
+      ..images = [
+        'assets/images/posts/kid_go/post13_1.jpg', // 파일명 확인!
+        'assets/images/posts/kid_go/post13_2.jpg',
+      ],
   ),
 
   // 4. 광고
   FeedItem(type: FeedItemType.ad),
 
-  // 5. 란 게시물 (윈터)
+  // 5. 란 게시물 (13번째)
   FeedItem(
     type: FeedItemType.post,
-    post: MOCK_USERS['ran']!.posts[0], // 위에서 만든 게시물 가져오기
+    post: MOCK_USERS['ran']!.posts[0], // 자동 생성된 13번째(인덱스 0) 사용
   ),
 
-  // 6. 추천 릴스 (나머지 비디오 4개)
+  // 6. 추천 릴스
   FeedItem(
     type: FeedItemType.suggestedReels,
     multiVideoPaths: [
-      'assets/videos/video1.mp4', // ⭐️ 실제 파일명으로 바꾸세요
+      'assets/videos/video1.mp4',
       'assets/videos/video2.mp4',
       'assets/videos/video3.mp4',
       'assets/videos/video4.mp4',
