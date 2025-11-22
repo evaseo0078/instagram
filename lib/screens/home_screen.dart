@@ -1,25 +1,38 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:instagram/data/mock_data.dart'; // ⭐️ 데이터 import
-import 'package:instagram/models/feed_item.dart'; // ⭐️ FeedItem import
+import 'package:instagram/models/feed_item.dart';
 import 'package:instagram/screens/dm_list_screen.dart';
-import 'package:instagram/widgets/post_widget.dart'; // ⭐️ PostWidget import
+import 'package:instagram/widgets/post_widget.dart';
 import 'package:video_player/video_player.dart';
 
 class HomeScreen extends StatelessWidget {
-  final List<dynamic> allPosts;
-  const HomeScreen({super.key, this.allPosts = const []});
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // ⭐️ [디버깅] 데이터가 몇 개인지 콘솔에 출력합니다.
+    print("🔥 현재 시나리오 아이템 개수: ${HOME_FEED_SCENARIO.length}");
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: Image.asset('assets/images/ic_instagram_logo.png', height: 32),
+        // 로고 이미지 경로가 맞는지 확인 (안 맞으면 텍스트로 대체됨)
+        title: Image.asset(
+          'assets/images/ic_instagram_logo.png',
+          height: 32,
+          errorBuilder: (context, error, stackTrace) {
+            return const Text('Instagram',
+                style: TextStyle(color: Colors.white));
+          },
+        ),
         actions: [
-          IconButton(icon: const Icon(CupertinoIcons.heart), onPressed: () {}),
           IconButton(
-            icon: const Icon(CupertinoIcons.paperplane),
+            icon: const Icon(CupertinoIcons.heart, color: Colors.white),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(CupertinoIcons.paperplane, color: Colors.white),
             onPressed: () {
               Navigator.push(
                 context,
@@ -29,62 +42,54 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: allPosts.isEmpty
-          ? Center(
-              child: Text('No posts yet. Add a post to get started!',
-                  style: TextStyle(fontSize: 18)))
-          : ListView.builder(
-              itemCount: allPosts.length,
-              itemBuilder: (context, index) {
-                final item = allPosts[index];
+      // ⭐️ 리스트가 비어있어도 "No posts yet" 문구를 띄우지 않고 그냥 빈 화면을 보여줍니다.
+      body: ListView.builder(
+        itemCount: HOME_FEED_SCENARIO.length,
+        itemBuilder: (context, index) {
+          final item = HOME_FEED_SCENARIO[index];
 
-                switch (item.type) {
-                  case FeedItemType.post:
-                    return PostWidget(post: item.post!);
+          switch (item.type) {
+            case FeedItemType.post:
+              if (item.post != null) {
+                return PostWidget(post: item.post!);
+              }
+              return const SizedBox.shrink();
 
-                  case FeedItemType.ad:
-                    return const AdWidget();
+            case FeedItemType.ad:
+              return const AdWidget();
 
-                  case FeedItemType.reel:
-                    return SingleReelWidget(videoPath: item.videoPath!);
+            case FeedItemType.reel:
+              if (item.videoPath != null) {
+                return SingleReelWidget(videoPath: item.videoPath!);
+              }
+              return const SizedBox.shrink();
 
-                  case FeedItemType.suggestedReels:
-                    return SuggestedReelsWidget(
-                        videoPaths: item.multiVideoPaths!);
+            case FeedItemType.suggestedReels:
+              if (item.multiVideoPaths != null) {
+                return SuggestedReelsWidget(videoPaths: item.multiVideoPaths!);
+              }
+              return const SizedBox.shrink();
 
-                  default:
-                    return const SizedBox.shrink();
-                }
-              },
-            ),
+            default:
+              return const SizedBox.shrink();
+          }
+        },
+      ),
     );
   }
 }
 
-// --- 아래 위젯들도 같은 파일에 포함시켜주세요 ---
+// --- (아래 위젯들은 그대로 둡니다) ---
 
 class AdWidget extends StatelessWidget {
   const AdWidget({super.key});
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          height: 300,
-          color: Colors.grey[850],
-          alignment: Alignment.center,
-          child:
-              const Text('Sponsored Ad', style: TextStyle(color: Colors.white)),
-        ),
-        Container(
-          padding: const EdgeInsets.all(10),
-          color: Colors.blue,
-          width: double.infinity,
-          child: const Text('Learn More',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontWeight: FontWeight.bold)),
-        )
-      ],
+    return Container(
+      height: 300,
+      color: Colors.grey[850],
+      alignment: Alignment.center,
+      child: const Text('Sponsored Ad', style: TextStyle(color: Colors.white)),
     );
   }
 }
@@ -101,11 +106,9 @@ class _SingleReelWidgetState extends State<SingleReelWidget> {
   @override
   void initState() {
     super.initState();
+    // ⭐️ 비디오 자동 재생은 막아둡니다 (오류 방지)
     _controller = VideoPlayerController.asset(widget.videoPath)
       ..initialize().then((_) => setState(() {}));
-    _controller.setLooping(true);
-    _controller.setVolume(0.0);
-    _controller.play();
   }
 
   @override
@@ -119,11 +122,13 @@ class _SingleReelWidgetState extends State<SingleReelWidget> {
     return Container(
       height: 500,
       margin: const EdgeInsets.symmetric(vertical: 10),
+      color: Colors.black,
       child: _controller.value.isInitialized
           ? AspectRatio(
               aspectRatio: _controller.value.aspectRatio,
               child: VideoPlayer(_controller))
-          : const Center(child: CircularProgressIndicator()),
+          : const Center(
+              child: Icon(Icons.play_circle_outline, color: Colors.white)),
     );
   }
 }
@@ -151,7 +156,7 @@ class SuggestedReelsWidget extends StatelessWidget {
                 margin: const EdgeInsets.all(4),
                 color: Colors.grey[900],
                 child: const Center(
-                    child: Icon(Icons.play_circle, color: Colors.white)),
+                    child: Icon(Icons.video_collection, color: Colors.white)),
               );
             },
           ),

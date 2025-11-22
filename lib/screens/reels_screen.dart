@@ -23,7 +23,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
           _isInitialized = true;
         });
         _controller.setLooping(true); // 반복 재생
-        _controller.play(); // 자동 재생
+        // _controller.play(); // 자동 재생 이거 지금 실행이 안돼서 주석처리함
       });
   }
 
