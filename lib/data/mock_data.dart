@@ -229,43 +229,46 @@ final Map<String, UserModel> MOCK_USERS = {
 
 // ⭐️ 2. 홈 피드 시나리오 (영상 시나리오 반영)
 // 릴스(kid_go) -> 광고 -> 키드(13번) -> 광고 -> 란(13번) -> 추천릴스(4개)
+// 📍 lib/data/mock_data.dart 의 맨 아래 부분
+
+// ⭐️ 2. 홈 피드 시나리오
 final List<FeedItem> HOME_FEED_SCENARIO = [
-  // // 1. 릴스 (Kid Go Video - 13초 파트)
+  // 1. 릴스 (일단 주석 처리! 비디오 문제 원천 차단)
   // FeedItem(
   //   type: FeedItemType.reel,
-  //   videoPath: 'assets/video/kid_go_video.mp4', // ✅ 경로 수정됨
+  //   videoPath: 'assets/video/kid_go_video.mp4',
   // ),
 
-  // 2. 광고
+  // 2. 광고 (주석 처리)
   // FeedItem(type: FeedItemType.ad),
 
-  // 3. 키드 게시물 (kid_go 13번글)
+  // ⭐️ 3. 키드 게시물 (사진) -> 이게 맨 위로 오게 됩니다.
   FeedItem(
     type: FeedItemType.post,
-    post: MOCK_USERS['kid_go']!.posts[0], // posts[0]은 post13
+    post: MOCK_USERS['kid_go']!.posts[0],
   ),
 
-  // 4. 광고
+  // 4. 광고 (주석 처리)
   // FeedItem(type: FeedItemType.ad),
 
-  // 5. 란 게시물 (ran 13번글)
+  // 5. 란 게시물 (사진)
   FeedItem(
     type: FeedItemType.post,
-    post: MOCK_USERS['ran']!.posts[0], // posts[0]은 post13
+    post: MOCK_USERS['ran']!.posts[0],
   ),
 
-  // 6. 추천 릴스 (31초 파트 - 4개의 영상)
-  FeedItem(
-    type: FeedItemType.suggestedReels,
-    multiVideoPaths: [
-      'assets/video/suggested_reels_1.mp4', // ✅ 경로 수정됨
-      'assets/video/suggested_reels_2.mp4',
-      'assets/video/suggested_reels_3.mp4',
-      'assets/video/suggested_reels_4.mp4',
-    ],
-  ),
+  // 6. 추천 릴스 (⭐️ 여기도 중요! 이것도 비디오를 로딩하므로 주석 처리하세요)
+  // FeedItem(
+  //   type: FeedItemType.suggestedReels,
+  //   multiVideoPaths: [
+  //     'assets/video/suggested_reels_1.mp4',
+  //     'assets/video/suggested_reels_2.mp4',
+  //     'assets/video/suggested_reels_3.mp4',
+  //     'assets/video/suggested_reels_4.mp4',
+  //   ],
+  // ),
 
-  // (옵션) 내 게시물도 시나리오에 넣고 싶으면 추가
+  // 7. 내 게시물 (사진)
   FeedItem(
     type: FeedItemType.post,
     post: MOCK_USERS['brown']!.posts[0],
