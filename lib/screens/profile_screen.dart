@@ -24,13 +24,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _navigateToEditProfile() async {
     if (!widget.isMyProfile) return;
 
+    // ⭐️ 1. 현재 프로필 사진이 File 경로인지 확인하여 File 객체 또는 null 전달
+    File? currentProfilePicFile;
+    if (!widget.user.profilePicAsset.startsWith('assets/')) {
+      // Asset 경로가 아니면 File 경로로 간주
+      currentProfilePicFile = File(widget.user.profilePicAsset);
+    }
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => EditProfileScreen(
           currentName: widget.user.name,
           currentBio: widget.user.bio,
-          currentProfilePic: null,
+          currentProfilePic: currentProfilePicFile, // ⭐️ File 객체 전달
         ),
       ),
     );
@@ -39,6 +46,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         widget.user.name = result['name'];
         widget.user.bio = result['bio'];
+
+        // ⭐️ 2. 프로필 이미지 경로 업데이트
+        final newImageFile = result['image'] as File?;
+        if (newImageFile != null) {
+          widget.user.profilePicAsset =
+              newImageFile.path; // File 경로 (String) 저장
+        } else if (result.containsKey('image')) {
+          // 사진이 null로 돌아온 경우 (삭제됨)
+          widget.user.profilePicAsset = 'assets/images/profiles/my_profile.png';
+        }
       });
     }
   }
@@ -82,14 +99,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             CircleAvatar(
                               radius: 40,
                               backgroundColor: Colors.grey[300],
-                              backgroundImage:
-                                  AssetImage(widget.user.profilePicAsset),
+                              backgroundImage: widget.user.profilePicAsset
+                                      .startsWith('assets/')
+                                  ? AssetImage(widget.user.profilePicAsset)
+                                      as ImageProvider
+                                  : FileImage(File(widget.user.profilePicAsset))
+                                      as ImageProvider,
                             ),
-                            _buildStatColumn(
-                                myPosts.length.toString(), 'Posts'),
-                            _buildStatColumn(
-                                widget.user.followerCount.toString(),
-                                'Followers'),
                             GestureDetector(
                               onTap: () {
                                 Navigator.push(

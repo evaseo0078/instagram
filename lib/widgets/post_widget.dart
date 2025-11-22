@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:instagram/data/mock_data.dart';
 import 'package:instagram/models/post_model.dart';
+import 'package:instagram/screens/comments_screen.dart'; // 댓글 화면
 import 'package:instagram/screens/profile_screen.dart';
 import 'package:instagram/utils/colors.dart';
 
@@ -40,6 +41,25 @@ class _PostWidgetState extends State<PostWidget> {
     }
   }
 
+  // ⭐️ 댓글 화면으로 이동하는 함수 (영상 2:31)
+  void _navigateToComments() async {
+    // CommentsScreen으로 이동하면서 현재 게시물의 댓글 리스트를 통째로 넘김
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CommentsScreen(
+          commentsList:
+              widget.post.comments, // ⭐️ List<Map<String, dynamic>> 전달
+        ),
+      ),
+    );
+
+    // 댓글 화면에서 돌아오면 화면을 갱신하여 댓글 수 등을 반영
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   // ⭐️ 이미지 1개를 그리는 함수
   Widget _buildSingleImage(dynamic imagePath) {
     if (imagePath is File) {
@@ -68,11 +88,9 @@ class _PostWidgetState extends State<PostWidget> {
               children: [
                 CircleAvatar(
                   radius: 16,
+                  // ⭐️ 프로필 이미지 로직 적용
                   backgroundImage:
-                      widget.post.userProfilePicAsset.startsWith('assets/')
-                          ? AssetImage(widget.post.userProfilePicAsset)
-                              as ImageProvider
-                          : null,
+                      _getProfileImageProvider(widget.post.userProfilePicAsset),
                 ),
                 const SizedBox(width: 8),
                 Text(widget.post.username,
@@ -150,33 +168,16 @@ class _PostWidgetState extends State<PostWidget> {
             ),
             IconButton(
               icon: const Icon(CupertinoIcons.chat_bubble),
-              onPressed: () {}, // 댓글 기능 연결 가능
+              onPressed: _navigateToComments, // ⭐️ 댓글 화면 연결
             ),
             IconButton(
                 icon: const Icon(CupertinoIcons.paperplane), onPressed: () {}),
 
-            // ⭐️ 중앙 하단 점 인디케이터 (영상 스타일)
-            if (widget.post.images.length > 1)
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(widget.post.images.length, (index) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _currentImageIndex == index
-                            ? Colors.blue
-                            : Colors.grey,
-                      ),
-                    );
-                  }),
-                ),
-              )
-            else
-              const Spacer(), // 사진 1장이면 빈 공간 채우기
+            // ⭐️ Dot Indicator 적용
+            _DotIndicator(
+              pageCount: widget.post.images.length,
+              currentPage: _currentImageIndex,
+            ),
 
             IconButton(
                 icon: const Icon(CupertinoIcons.bookmark), onPressed: () {}),
@@ -208,6 +209,37 @@ class _PostWidgetState extends State<PostWidget> {
         ),
         const SizedBox(height: 10),
       ],
+    );
+  }
+}
+
+// ⭐️ 새로운 중앙 점 인디케이터 위젯 (PostWidget 외부에 정의)
+class _DotIndicator extends StatelessWidget {
+  final int pageCount;
+  final int currentPage;
+
+  const _DotIndicator({required this.pageCount, required this.currentPage});
+
+  @override
+  Widget build(BuildContext context) {
+    // 사진이 1장이면 인디케이터를 표시하지 않습니다.
+    if (pageCount <= 1) return const Spacer();
+
+    return Expanded(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(pageCount, (index) {
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: currentPage == index ? Colors.blue : Colors.grey.shade400,
+            ),
+          );
+        }),
+      ),
     );
   }
 }
