@@ -31,10 +31,19 @@ class FollowingListScreen extends StatelessWidget {
             title: Text(user.username,
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text(user.name),
-            trailing: OutlinedButton(
-              onPressed: () {},
+            // trailing: OutlinedButton(
+            //   onPressed: () {},
+            //   child: const Text('Following',
+            //       style: TextStyle(color: primaryColor)),
+            // ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(color: secondaryColor),
+                borderRadius: BorderRadius.circular(5),
+              ),
               child: const Text('Following',
-                  style: TextStyle(color: primaryColor)),
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             ),
             onTap: () {
               // ⭐️ 누르면 그 사람 프로필로 이동 (영상 기능)

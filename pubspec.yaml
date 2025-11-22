@@ -84,7 +84,7 @@ flutter:
     - assets/images/posts/shinichi/
     - assets/images/posts/sin_police/
     - assets/images/posts/triangle/
-    - assets/videos/
+    - assets/video/
 
 
   # To add assets to your application, add an assets section, like this:

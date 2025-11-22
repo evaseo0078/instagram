@@ -1,27 +1,23 @@
-// 📍 lib/screens/dm_list_screen.dart (신규 파일)
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:instagram/screens/chat_screen.dart'; // ⭐️ 3단계에서 만들 파일
+import 'package:instagram/screens/chat_screen.dart'; // ⭐️ ChatScreen import 필수
 import 'package:instagram/utils/colors.dart';
 
 class DmListScreen extends StatelessWidget {
   const DmListScreen({super.key});
 
-  // ⭐️ 2단계에서 만들 가짜 계정 데이터를 여기에 넣을 수 있습니다.
-  // (지금은 간단하게 하드코딩)
+  // 가짜 DM 리스트
   final List<Map<String, String>> _dmList = const [
     {
-      "username": "신해빈",
+      "username": "shinichi",
       "lastMessage": "Seen",
-      "assetImage": "assets/images/haebin_profile.png"
+      "assetImage": "assets/images/profiles/shinichi.png"
     },
     {
-      "username": "최준혁",
+      "username": "kid_go",
       "lastMessage": "Sent 3m ago",
-      "assetImage": "assets/images/junhyuk_profile.png"
+      "assetImage": "assets/images/profiles/kid_go.png"
     },
-    // ... (더 많은 가짜 DM)
   ];
 
   @override
@@ -32,17 +28,13 @@ class DmListScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: primaryColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('ta_junhyuk',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title:
+            const Text('Direct', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
-            icon: const Icon(CupertinoIcons.video_camera, color: primaryColor),
-            onPressed: () {},
-          ),
+              icon: const Icon(CupertinoIcons.video_camera), onPressed: () {}),
           IconButton(
-            icon: const Icon(CupertinoIcons.plus_app, color: primaryColor),
-            onPressed: () {},
-          ),
+              icon: const Icon(CupertinoIcons.plus_app), onPressed: () {}),
         ],
       ),
       body: ListView(
@@ -60,20 +52,11 @@ class DmListScreen extends StatelessWidget {
             child: Text('Messages',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ),
-          // ⭐️ 가짜 DM 리스트
           ..._dmList.map((dm) {
             return ListTile(
               leading: CircleAvatar(
                 radius: 24,
-                // ⭐️ 2번 항목에서 만들 Asset 이미지를 사용합니다.
-                // ⭐️ 만약 이미지가 없다면, 일단 아이콘으로 대체하세요.
                 backgroundImage: AssetImage(dm['assetImage']!),
-                onBackgroundImageError: (exception, stackTrace) {
-                  // (이미지 로드 실패 시 임시 아이콘)
-                },
-                child: !dm['assetImage']!.contains('assets/')
-                    ? const Icon(Icons.person, color: Colors.white)
-                    : null,
               ),
               title: Text(dm['username']!),
               subtitle: Text(dm['lastMessage']!,
@@ -81,7 +64,7 @@ class DmListScreen extends StatelessWidget {
               trailing:
                   const Icon(CupertinoIcons.camera, color: secondaryColor),
               onTap: () {
-                // ⭐️ 3단계에서 만들 ChatScreen으로 이동
+                // ⭐️ ChatScreen으로 이동 (오류 해결)
                 Navigator.push(
                   context,
                   MaterialPageRoute(

@@ -1,16 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:instagram/data/mock_data.dart'; // 데이터 접근
-import 'package:instagram/models/user_model.dart'; // 모델
+import 'package:instagram/models/post_model.dart'; // ⭐️ PostModel import 필수
+import 'package:instagram/models/user_model.dart';
 import 'package:instagram/screens/edit_profile_screen.dart';
 import 'package:instagram/screens/following_list_screen.dart';
 import 'package:instagram/utils/colors.dart';
 
 class ProfileScreen extends StatefulWidget {
-  // ⭐️ 이제 특정 유저의 정보를 받아서 그 사람의 프로필을 보여줍니다.
   final UserModel user;
-
-  // ⭐️ 메인 탭에서 넘어온 경우인지 확인 (내 프로필인지)
   final bool isMyProfile;
 
   const ProfileScreen({
@@ -24,9 +21,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // "Edit profile" 이동
   Future<void> _navigateToEditProfile() async {
-    // 내 프로필이 아니면 수정 불가
     if (!widget.isMyProfile) return;
 
     final result = await Navigator.push(
@@ -35,7 +30,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         builder: (context) => EditProfileScreen(
           currentName: widget.user.name,
           currentBio: widget.user.bio,
-          // 파일 이미지는 관리 복잡하므로 생략하거나 asset만 사용한다고 가정
           currentProfilePic: null,
         ),
       ),
@@ -43,39 +37,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (result != null && result is Map<String, dynamic>) {
       setState(() {
-        // ⭐️ 데이터 원본(MOCK_USERS)을 직접 수정해야 전역 반영됨
         widget.user.name = result['name'];
         widget.user.bio = result['bio'];
-        // 이미지는 로직상 복잡하여 생략 (영상 기능 위주)
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ⭐️ 유저의 게시물 가져오기
     final myPosts = widget.user.posts;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.user.username, // ⭐️ 유저네임 표시
+          widget.user.username,
           style:
               const TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
         ),
         actions: [
-          // 내 프로필일 때만 '추가' 버튼 등 표시
           if (widget.isMyProfile) ...[
             IconButton(
               icon: const Icon(Icons.add_box_outlined),
-              onPressed: () {
-                // MainScreen에서 처리하므로 여기선 빈 동작 혹은 콜백 필요
-                // (간단하게 스낵바)
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Go to "Add" tab to create post')),
-                );
-              },
+              onPressed: () {},
             ),
             IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
           ]
@@ -93,23 +76,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 프사 및 통계
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             CircleAvatar(
                               radius: 40,
                               backgroundColor: Colors.grey[300],
-                              backgroundImage: widget.user.profilePicAsset
-                                      .startsWith('assets/')
-                                  ? AssetImage(widget.user.profilePicAsset)
-                                      as ImageProvider
-                                  : null, // File 이미지 등은 생략
-                              child: !widget.user.profilePicAsset
-                                      .startsWith('assets/')
-                                  ? const Icon(Icons.person,
-                                      size: 40, color: Colors.white)
-                                  : null,
+                              backgroundImage:
+                                  AssetImage(widget.user.profilePicAsset),
                             ),
                             _buildStatColumn(
                                 myPosts.length.toString(), 'Posts'),
@@ -129,10 +103,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 );
                               },
                               child: _buildStatColumn(
-                                widget.user.followingUsernames.length
-                                    .toString(),
-                                'Following',
-                              ),
+                                  widget.user.followingUsernames.length
+                                      .toString(),
+                                  'Following'),
                             ),
                           ],
                         ),
@@ -143,8 +116,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 4),
                         Text(widget.user.bio),
                         const SizedBox(height: 16),
-
-                        // ⭐️ 버튼 (내 프로필이면 Edit, 남이면 Follow)
                         SizedBox(
                           width: double.infinity,
                           child: widget.isMyProfile
@@ -159,10 +130,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       style: TextStyle(color: primaryColor)),
                                 )
                               : ElevatedButton(
-                                  // 팔로우 버튼 스타일
-                                  onPressed: () {
-                                    // 팔로우 로직 (생략 - 영상 UI 구현 위주)
-                                  },
+                                  onPressed: () {},
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.blue,
                                     shape: RoundedRectangleBorder(
@@ -196,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           body: TabBarView(
             children: [
               _buildPostGrid(myPosts),
-              _buildReelsGrid(myPosts.where((p) => p.isReel).toList()),
+              _buildReelsGrid(myPosts), // 릴스는 없는 경우 빈 화면 처리됨
             ],
           ),
         ),
@@ -214,7 +182,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildPostGrid(List<dynamic> posts) {
+  // ⭐️ 수정됨: List<dynamic> -> List<PostModel>
+  Widget _buildPostGrid(List<PostModel> posts) {
     if (posts.isEmpty) return const Center(child: Text("No posts yet"));
     return GridView.builder(
       shrinkWrap: true,
@@ -226,37 +195,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       itemCount: posts.length,
       itemBuilder: (context, index) {
-        final post = posts[index]; // PostModel
-        return _buildGridImage(post.image);
+        final post = posts[index];
+        // ⭐️ 수정됨: post.images[0] (리스트의 첫 번째 사진) 사용
+        return _buildGridImage(post.images.isNotEmpty ? post.images[0] : '');
       },
     );
   }
 
-  Widget _buildGridImage(dynamic image) {
-    if (image is File) return Image.file(image, fit: BoxFit.cover);
-    if (image is String) {
-      if (image.startsWith('http'))
-        return Image.network(image, fit: BoxFit.cover);
-      return Image.asset(image, fit: BoxFit.cover);
+  // ⭐️ 릴스 그리드 (구색만 갖춤)
+  Widget _buildReelsGrid(List<PostModel> posts) {
+    // 실제로는 videoUrl이 있는 것만 필터링해야 하지만, 일단 비워둡니다.
+    return const Center(child: Text("No Reels yet"));
+  }
+
+  Widget _buildGridImage(String imagePath) {
+    if (imagePath.isEmpty) return Container(color: Colors.grey);
+    if (imagePath.startsWith('assets/')) {
+      return Image.asset(imagePath, fit: BoxFit.cover);
     }
-    return Container(color: Colors.grey);
-  }
-
-  // 릴스 그리드 위젯 추가
-  Widget _buildReelsGrid(List<PostModel> reels) {
-    if (reels.isEmpty) return const Center(child: Text("No Reels yet"));
-    return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3, childAspectRatio: 0.6),
-      itemCount: reels.length,
-      itemBuilder: (context, index) {
-        return Container(
-          margin: const EdgeInsets.all(1),
-          color: Colors.grey[900],
-          child: Image.asset(reels[index].images[0], fit: BoxFit.cover),
-        );
-      },
-    );
+    return Image.file(File(imagePath), fit: BoxFit.cover);
   }
 }
 
