@@ -48,8 +48,8 @@ class _PostWidgetState extends State<PostWidget> {
       context,
       MaterialPageRoute(
         builder: (context) => CommentsScreen(
-          commentsList:
-              widget.post.comments, // ⭐️ List<Map<String, dynamic>> 전달
+          commentsList: widget.post.comments
+              as List<Map<String, dynamic>>, // ⭐️ List<Map<String, dynamic>> 전달
         ),
       ),
     );
@@ -60,10 +60,20 @@ class _PostWidgetState extends State<PostWidget> {
     }
   }
 
+  // ⭐️ [추가] 프로필 이미지 로직 (오류 해결)
+  ImageProvider _getProfileImageProvider(String assetPath) {
+    if (assetPath.startsWith('assets/')) {
+      return AssetImage(assetPath);
+    } else {
+      // Asset 경로가 아니면 File 경로로 간주
+      return FileImage(File(assetPath));
+    }
+  }
+
   // ⭐️ 이미지 1개를 그리는 함수
   Widget _buildSingleImage(dynamic imagePath) {
-    if (imagePath is File) {
-      return Image.file(imagePath, fit: BoxFit.cover, width: double.infinity);
+    if (imagePath.startsWith('assets/')) {
+      return Image.asset(imagePath, fit: BoxFit.cover, width: double.infinity);
     } else if (imagePath is String) {
       if (imagePath.startsWith('http')) {
         return Image.network(imagePath,
