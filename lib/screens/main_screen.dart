@@ -20,11 +20,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-
-  // ⭐️ 현재 로그인한 유저 (ta_junhyuk)
   final myUser = MOCK_USERS['ta_junhyuk']!;
-
-  // ⭐️ 전체 피드 게시물 리스트 (내꺼 + 팔로우한 사람꺼)
   List<PostModel> _feedPosts = [];
 
   @override
@@ -33,53 +29,68 @@ class _MainScreenState extends State<MainScreen> {
     _refreshFeed();
   }
 
-  // ⭐️ 피드 새로고침 (데이터 갱신)
   void _refreshFeed() {
     List<PostModel> tempPosts = [];
-
-    // 1. 내 게시물 추가
     tempPosts.addAll(myUser.posts);
-
-    // 2. 팔로우한 사람들의 게시물 추가
     for (var followingUsername in myUser.followingUsernames) {
       final user = MOCK_USERS[followingUsername];
       if (user != null) {
         tempPosts.addAll(user.posts);
       }
     }
-
     setState(() {
       _feedPosts = tempPosts;
     });
   }
 
-  void _onTabTapped(int index) {
+  // 게시물 작성 완료 시 호출
+  void _addPost(File image, String caption) {
+    setState(() {
+      MOCK_USERS['ta_junhyuk']!.posts.insert(
+          0,
+          PostModel(
+            username: 'ta_junhyuk',
+            userProfilePicAsset: 'assets/images/my_profile.png',
+            images: [image],
+            caption: caption,
+            comments: [],
+            likes: 0,
+          ));
+      _refreshFeed();
+      _selectedIndex = 0;
+    });
+  }
+
+  // 탭 선택 함수 수정
+  void _onTabTapped(int index) async {
     if (index == 2) {
-      _showCreatePostSheet(context);
+      final File? originalFile = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const GalleryPickerScreen()),
+      );
+      if (originalFile != null) {
+        if (!mounted) return;
+        final File? filteredFile = await Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => EditFilterScreen(imageFile: originalFile)),
+        );
+        if (filteredFile != null && mounted) {
+          final String? caption = await Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => AddPostScreen(imageFile: filteredFile)),
+          );
+          if (caption != null) {
+            _addPost(filteredFile, caption);
+          }
+        }
+      }
     } else {
       setState(() {
         _selectedIndex = index;
       });
     }
-  }
-
-  // ⭐️ 게시물 작성 후 콜백
-  void _addPost(File image, String caption) {
-    setState(() {
-      // 내 유저 데이터에 게시물 추가
-      myUser.posts.add(PostModel(
-        username: myUser.username,
-        userProfilePicAsset: myUser.profilePicAsset,
-        image: image,
-        caption: caption,
-        comments: [],
-        likes: 0,
-      ));
-
-      // 피드 갱신 및 프로필 탭으로 이동
-      _refreshFeed();
-      _selectedIndex = 4;
-    });
   }
 
   @override
@@ -89,15 +100,11 @@ class _MainScreenState extends State<MainScreen> {
         // 상태 유지를 위해 IndexedStack 사용 권장
         index: _selectedIndex,
         children: [
-          HomeScreen(allPosts: _feedPosts), // 0: 홈 (피드)
-          const SearchScreen(), // 1: 검색 (다른 유저 찾기)
-          Container(), // 2: 추가 (바텀시트)
-          const ReelsScreen(), // 3: 릴스
-          ProfileScreen(
-            // 4: 내 프로필
-            user: myUser,
-            isMyProfile: true,
-          ),
+          const HomeScreen(),
+          const SearchScreen(),
+          Container(), // 빈 컨테이너로 대체 (갤러리 픽커는 탭에서 직접 열림)
+          const ReelsScreen(),
+          ProfileScreen(user: MOCK_USERS['kid_go']!, isMyProfile: true),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -131,43 +138,6 @@ class _MainScreenState extends State<MainScreen> {
         showSelectedLabels: false,
         showUnselectedLabels: false,
       ),
-    );
-  }
-
-  // --- (아래는 기존 _showCreatePostSheet 등 복사해서 사용) ---
-  void _showCreatePostSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      backgroundColor: backgroundColor,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                      color: Colors.grey[400],
-                      borderRadius: BorderRadius.circular(8))),
-              const SizedBox(height: 16),
-              const Text('Create',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              const SizedBox(height: 16),
-              ListTile(
-                  leading: const Icon(Icons.grid_on_outlined),
-                  title: const Text('Post'),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _pickImageAndNavigate();
-                  }),
-            ],
-          ),
-        );
-      },
     );
   }
 

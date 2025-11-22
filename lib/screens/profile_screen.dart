@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:instagram/data/mock_data.dart'; // 데이터 접근
 import 'package:instagram/models/user_model.dart'; // 모델
 import 'package:instagram/screens/edit_profile_screen.dart';
+import 'package:instagram/screens/following_list_screen.dart';
 import 'package:instagram/utils/colors.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -115,10 +116,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildStatColumn(
                                 widget.user.followerCount.toString(),
                                 'Followers'),
-                            _buildStatColumn(
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => FollowingListScreen(
+                                      followingUsernames:
+                                          widget.user.followingUsernames,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: _buildStatColumn(
                                 widget.user.followingUsernames.length
                                     .toString(),
-                                'Following'),
+                                'Following',
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -168,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const TabBar(
                     tabs: [
                       Tab(icon: Icon(Icons.grid_on)),
-                      Tab(icon: Icon(Icons.person_pin_outlined)),
+                      Tab(icon: Icon(Icons.movie_creation_outlined)),
                     ],
                     indicatorColor: primaryColor,
                     labelColor: primaryColor,
@@ -181,7 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           body: TabBarView(
             children: [
               _buildPostGrid(myPosts),
-              const Center(child: Text('Tagged posts')),
+              _buildReelsGrid(myPosts.where((p) => p.isReel).toList()),
             ],
           ),
         ),
@@ -225,6 +240,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return Image.asset(image, fit: BoxFit.cover);
     }
     return Container(color: Colors.grey);
+  }
+
+  // 릴스 그리드 위젯 추가
+  Widget _buildReelsGrid(List<PostModel> reels) {
+    if (reels.isEmpty) return const Center(child: Text("No Reels yet"));
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3, childAspectRatio: 0.6),
+      itemCount: reels.length,
+      itemBuilder: (context, index) {
+        return Container(
+          margin: const EdgeInsets.all(1),
+          color: Colors.grey[900],
+          child: Image.asset(reels[index].images[0], fit: BoxFit.cover),
+        );
+      },
+    );
   }
 }
 

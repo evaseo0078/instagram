@@ -41,6 +41,8 @@ dependencies:
   photo_manager_image_provider: ^2.2.0
   photofilters: ^3.0.1
   image: ^3.3.0
+  video_player: ^2.8.6  # 릴스 재생을 위해 추가
+  chewie: ^1.8.1 # video_player 위젯 커스텀을 위해 추가
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +70,22 @@ flutter:
     - assets/images/
     - assets/images/avatar_promo.png
     - assets/images/ic_instagram_logo.png # Instagram logo 추가함.(한서)
+    - assets/images/profiles/
+    - assets/images/posts/kid_go/
+    - assets/images/posts/ran/
+    - assets/images/posts/areum/
+    - assets/images/posts/conan/
+    - assets/images/posts/famous/
+    - assets/images/posts/inseong/
+    - assets/images/posts/mungchi/
+    - assets/images/posts/my_posts/
+    - assets/images/posts/pupple/
+    - assets/images/posts/rose/
+    - assets/images/posts/shinichi/
+    - assets/images/posts/sin_police/
+    - assets/images/posts/triangle/
+    - assets/videos/
+
 
   # To add assets to your application, add an assets section, like this:
   # assets:
