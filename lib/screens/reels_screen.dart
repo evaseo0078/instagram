@@ -17,7 +17,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
   void initState() {
     super.initState();
     // ⭐️ 인터넷의 샘플 비디오를 재생합니다.
-    _controller = VideoPlayerController.asset('assets/videos/kid_go_video.mp4')
+    _controller = VideoPlayerController.asset('assets/video/kid_go_video.mp4')
       ..initialize().then((_) {
         setState(() {
           _isInitialized = true;
