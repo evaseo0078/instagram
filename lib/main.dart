@@ -21,14 +21,14 @@ class MyApp extends StatelessWidget {
         appBarTheme: const AppBarTheme(
           backgroundColor: backgroundColor,
           elevation: 0, // 상단바 그림자 제거
-          systemOverlayStyle: SystemUiOverlayStyle.dark, // 상태바 아이콘 검은색
           iconTheme: IconThemeData(color: primaryColor),
           titleTextStyle: TextStyle(
             color: primaryColor,
-            fontSize: 18,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
         ),
+        iconTheme: const IconThemeData(color: primaryColor),
       ),
       home: const MainScreen(), // 우리의 메인 화면을 보여줍니다.
     );

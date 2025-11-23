@@ -16,7 +16,6 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.black,
         // 로고 이미지 경로가 맞는지 확인 (안 맞으면 텍스트로 대체됨)
         title: Image.asset(
           'assets/images/ic_instagram_logo.png',
@@ -28,11 +27,11 @@ class HomeScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(CupertinoIcons.heart, color: Colors.white),
+            icon: const Icon(CupertinoIcons.heart, color: Colors.black),
             onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(CupertinoIcons.paperplane, color: Colors.white),
+            icon: const Icon(CupertinoIcons.paperplane, color: Colors.black),
             onPressed: () {
               Navigator.push(
                 context,
