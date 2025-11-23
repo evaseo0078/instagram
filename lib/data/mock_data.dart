@@ -80,7 +80,27 @@ final Map<String, UserModel> MOCK_USERS = {
     followerCount: 8000,
     followingUsernames: ['shinichi', 'pupple'], // sonoko -> pupple
     posts: [
-      _makePost('ran', 'assets/images/profiles/ran.png', 13, 4),
+      // ⭐️ 13번 게시물(첫번째)에 댓글 데이터를 실제로 넣어줍니다.
+      PostModel(
+        username: 'kid_go',
+        userProfilePicAsset: 'assets/images/profiles/kid_go.png',
+        images: List.generate(
+            4,
+            (index) =>
+                'assets/images/posts/kid_go/post13_${index + 1}.jpg'), // jpg 확인
+        caption: 'Post #13 by kid_go 📸',
+        likes: 180,
+        date: DateTime.now().subtract(const Duration(days: 1)),
+        comments: [
+          // ⭐️ 이 데이터가 있어야 댓글 창에 뜹니다!
+          {
+            "username": "un.k1o",
+            "comment": "얼굴을 저렇게 가까이 들이대는데 전혀 위화감이 없음 ㅋㅋㅋㅋㅋㅋ 미녀의맛tv🥰🥰",
+            "time": "12s",
+            "isLiked": true,
+          }
+        ],
+      ),
       _makePost('ran', 'assets/images/profiles/ran.png', 12, 4),
       _makePost('ran', 'assets/images/profiles/ran.png', 11, 4),
     ],

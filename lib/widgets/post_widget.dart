@@ -1,4 +1,4 @@
-// 📍 lib/widgets/post_widget.dart (전체 수정)
+// 📍 lib/widgets/post_widget.dart 전체 수정
 
 import 'dart:async';
 import 'dart:io';
@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:instagram/models/post_model.dart';
 import 'package:instagram/screens/comments_screen.dart';
 import 'package:instagram/utils/colors.dart';
-// import 'package:intl/intl.dart'; // 날짜 포맷팅을 위해 필요할 수 있음 (일단 하드코딩으로 처리)
 
 class PostWidget extends StatefulWidget {
   final PostModel post;
@@ -21,7 +20,6 @@ class _PostWidgetState extends State<PostWidget> {
   bool _isBigHeartVisible = false;
   int _currentImageIndex = 0;
 
-  // 좋아요 더블 탭
   void _handleDoubleTapLike() {
     setState(() {
       widget.post.isLiked = true;
@@ -33,25 +31,37 @@ class _PostWidgetState extends State<PostWidget> {
     });
   }
 
-  // 댓글 화면 이동
-  void _navigateToComments() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CommentsScreen(
-          commentsList: widget.post.comments,
+  // ⭐️ 댓글 창을 "바텀 시트"로 띄우는 함수
+  void _showCommentsModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // 전체 높이 제어 가능하게 함
+      backgroundColor: Colors.transparent, // 뒷배경 투명
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.9, // 화면의 90% 높이
+        decoration: const BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
+        // ⭐️ 댓글 리스트를 그대로 넘겨줍니다.
+        child: CommentsScreen(commentsList: widget.post.comments),
       ),
-    );
-    if (mounted) setState(() {});
+    ).then((_) {
+      // 창이 닫히면 화면 갱신 (댓글 개수 등 반영)
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // 댓글 미리보기용 데이터 (첫 번째 댓글)
+    final Map<String, dynamic>? firstComment =
+        widget.post.comments.isNotEmpty ? widget.post.comments.first : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 1. 헤더 (프로필 사진 + 이름 + 더보기)
+        // 1. 헤더
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           child: Row(
@@ -71,26 +81,27 @@ class _PostWidgetState extends State<PostWidget> {
                     const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
               const Spacer(),
-              const Icon(Icons.more_vert), // 더보기 아이콘
+              const Icon(Icons.more_vert),
             ],
           ),
         ),
 
-        // 2. 이미지 (더블탭 좋아요 기능)
+        // 2. 이미지 (4:3 비율, 꽉 차게)
         GestureDetector(
           onDoubleTap: _handleDoubleTapLike,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              SizedBox(
-                height: 400, // 사진 높이
+              AspectRatio(
+                aspectRatio: 4 / 3,
                 child: PageView.builder(
                   itemCount: widget.post.images.length,
-                  onPageChanged: (index) {
-                    setState(() => _currentImageIndex = index);
-                  },
+                  onPageChanged: (index) =>
+                      setState(() => _currentImageIndex = index),
                   itemBuilder: (context, index) {
                     final imagePath = widget.post.images[index];
+                    // ⭐️ BoxFit.cover를 사용하되, 4:3 비율 틀에 맞춥니다.
+                    // (이미지 자체가 4:3이면 원본 그대로, 아니면 꽉 차게 나옵니다)
                     if (imagePath.startsWith('assets/')) {
                       return Image.asset(imagePath, fit: BoxFit.cover);
                     } else {
@@ -99,14 +110,12 @@ class _PostWidgetState extends State<PostWidget> {
                   },
                 ),
               ),
-              // 하트 애니메이션
               AnimatedOpacity(
                 opacity: _isBigHeartVisible ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 200),
                 child: const Icon(CupertinoIcons.heart_fill,
                     color: Colors.white, size: 100),
               ),
-              // 사진 번호 표시 (1/3)
               if (widget.post.images.length > 1)
                 Positioned(
                   top: 10,
@@ -127,21 +136,13 @@ class _PostWidgetState extends State<PostWidget> {
           ),
         ),
 
-        // 3. 아이콘 버튼들 (하트, 댓글, DM, ..., 북마크)
+        // 3. 아이콘 버튼들
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              // 하트 (좋아요)
-              IconButton(
-                icon: Icon(
-                  widget.post.isLiked
-                      ? CupertinoIcons.heart_fill
-                      : CupertinoIcons.heart,
-                  color: widget.post.isLiked ? Colors.red : primaryColor,
-                  size: 28,
-                ),
-                onPressed: () {
+              InkWell(
+                onTap: () {
                   setState(() {
                     widget.post.isLiked = !widget.post.isLiked;
                     widget.post.isLiked
@@ -149,21 +150,38 @@ class _PostWidgetState extends State<PostWidget> {
                         : widget.post.likes--;
                   });
                 },
+                child: Icon(
+                  widget.post.isLiked
+                      ? CupertinoIcons.heart_fill
+                      : CupertinoIcons.heart,
+                  color: widget.post.isLiked ? Colors.red : primaryColor,
+                  size: 28,
+                ),
               ),
-              // 댓글
-              IconButton(
-                icon: const Icon(CupertinoIcons.chat_bubble, size: 26),
-                onPressed: _navigateToComments,
+              const SizedBox(width: 16),
+
+              // ⭐️ 댓글 아이콘 -> 바텀시트 연결
+              InkWell(
+                onTap: _showCommentsModal,
+                child: const Icon(CupertinoIcons.chat_bubble, size: 28),
               ),
-              // DM (종이비행기) - 보내주신 사진 참고하여 추가
-              IconButton(
-                icon: const Icon(CupertinoIcons.paperplane, size: 26),
-                onPressed: () {},
+              const SizedBox(width: 16),
+
+              // ⭐️ 리포스트 아이콘 (더 얇은 것으로 교체)
+              InkWell(
+                onTap: () {},
+                // paperplane(종이비행기) 옆에 있는 얇은 순환 아이콘과 유사한 것 사용
+                child: const Icon(CupertinoIcons.arrow_2_circlepath, size: 28),
+              ),
+              const SizedBox(width: 16),
+
+              InkWell(
+                onTap: () {},
+                child: const Icon(CupertinoIcons.paperplane, size: 28),
               ),
 
-              const Spacer(), // 사이 간격 벌리기
+              const Spacer(),
 
-              // 인디케이터 (사진이 여러장일 때만)
               if (widget.post.images.length > 1)
                 Row(
                   children: List.generate(widget.post.images.length, (index) {
@@ -174,92 +192,71 @@ class _PostWidgetState extends State<PostWidget> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: _currentImageIndex == index
-                            ? blueColor
+                            ? Colors.blue
                             : Colors.grey.shade300,
                       ),
                     );
                   }),
                 ),
+              const Spacer(),
 
-              const Spacer(), // 인디케이터가 중앙에 오도록 처리 (약식)
-
-              // 북마크
-              IconButton(
-                icon: const Icon(CupertinoIcons.bookmark, size: 26),
-                onPressed: () {},
-              ),
+              const Icon(CupertinoIcons.bookmark, size: 28),
             ],
           ),
         ),
 
-        // 4. 정보 표시 (좋아요, 캡션, 댓글 미리보기, 날짜)
+        // 4. 정보 표시
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 좋아요 개수
-              Text(
-                '${widget.post.likes} likes', // 예: 918,471 likes
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
+              Text('${widget.post.likes} likes',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: 6),
-
-              // 캡션 (아이디 + 내용)
               RichText(
                 text: TextSpan(
                   style: const TextStyle(color: primaryColor, fontSize: 14),
                   children: [
                     TextSpan(
-                      text: '${widget.post.username} ',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                        text: '${widget.post.username} ',
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
                     TextSpan(text: widget.post.caption),
                   ],
                 ),
               ),
               const SizedBox(height: 6),
 
-              // ⭐️ 댓글 미리보기 (요청사항: un.k1o ... 하트)
-              // 임시로 가짜 댓글 하나를 보여줍니다.
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RichText(
-                    text: const TextSpan(
-                      style: TextStyle(color: primaryColor, fontSize: 14),
-                      children: [
-                        TextSpan(
-                          text: 'un.k1o ', // 댓글 작성자
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        TextSpan(text: '얼굴을 저렇게 가까이 들이대는데...'), // 댓글 내용
-                      ],
+              // ⭐️ 실제 데이터 반영된 댓글 미리보기
+              if (firstComment != null) ...[
+                Row(
+                  children: [
+                    Text('${firstComment['username']} ',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 14)),
+                    Expanded(
+                      child: Text(
+                        firstComment['comment'],
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 14),
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  const Icon(CupertinoIcons.heart,
-                      size: 12, color: secondaryColor), // 작은 하트
-                ],
-              ),
-              const SizedBox(height: 4),
-
-              // 댓글 모두 보기
-              GestureDetector(
-                onTap: _navigateToComments,
-                child: const Text(
-                  'View all comments',
-                  style: TextStyle(color: secondaryColor, fontSize: 14),
+                    Icon(CupertinoIcons.heart,
+                        size: 14, color: Colors.grey[400]),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 4),
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: _showCommentsModal, // 여기 눌러도 댓글창 열림
+                  child: const Text('View all comments',
+                      style: TextStyle(color: secondaryColor, fontSize: 14)),
+                ),
+              ],
 
-              // 날짜 (요청사항: September 19)
-              const Text(
-                'September 19',
-                style: TextStyle(color: secondaryColor, fontSize: 12),
-              ),
+              const SizedBox(height: 4),
+              const Text('September 19',
+                  style: TextStyle(color: secondaryColor, fontSize: 12)),
             ],
           ),
         ),
