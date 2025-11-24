@@ -68,6 +68,15 @@ final Map<String, UserModel> MOCK_USERS = {
       _makePost('kid_go', 'assets/images/profiles/kid_go.png', 12, 3),
       _makePost('kid_go', 'assets/images/profiles/kid_go.png', 11, 4),
       _makePost('kid_go', 'assets/images/profiles/kid_go.png', 10, 4),
+      _makePost('kid_go', 'assets/images/profiles/kid_go.png', 9, 4),
+      _makePost('kid_go', 'assets/images/profiles/kid_go.png', 8, 3),
+      _makePost('kid_go', 'assets/images/profiles/kid_go.png', 7, 4),
+      _makePost('kid_go', 'assets/images/profiles/kid_go.png', 6, 3),
+      _makePost('kid_go', 'assets/images/profiles/kid_go.png', 5, 2),
+      _makePost('kid_go', 'assets/images/profiles/kid_go.png', 4, 3),
+      _makePost('kid_go', 'assets/images/profiles/kid_go.png', 3, 3),
+      _makePost('kid_go', 'assets/images/profiles/kid_go.png', 2, 2),
+      _makePost('kid_go', 'assets/images/profiles/kid_go.png', 1, 2),
     ],
   ),
 
@@ -80,29 +89,19 @@ final Map<String, UserModel> MOCK_USERS = {
     followerCount: 8000,
     followingUsernames: ['shinichi', 'pupple'], // sonoko -> pupple
     posts: [
-      // ⭐️ 13번 게시물(첫번째)에 댓글 데이터를 실제로 넣어줍니다.
-      PostModel(
-        username: 'kid_go',
-        userProfilePicAsset: 'assets/images/profiles/kid_go.png',
-        images: List.generate(
-            4,
-            (index) =>
-                'assets/images/posts/kid_go/post13_${index + 1}.jpg'), // jpg 확인
-        caption: 'Post #13 by kid_go 📸',
-        likes: 180,
-        date: DateTime.now().subtract(const Duration(days: 1)),
-        comments: [
-          // ⭐️ 이 데이터가 있어야 댓글 창에 뜹니다!
-          {
-            "username": "un.k1o",
-            "comment": "얼굴을 저렇게 가까이 들이대는데 전혀 위화감이 없음 ㅋㅋㅋㅋㅋㅋ 미녀의맛tv🥰🥰",
-            "time": "12s",
-            "isLiked": true,
-          }
-        ],
-      ),
+      _makePost('ran', 'assets/images/profiles/ran.png', 13, 4),
       _makePost('ran', 'assets/images/profiles/ran.png', 12, 4),
       _makePost('ran', 'assets/images/profiles/ran.png', 11, 4),
+      _makePost('ran', 'assets/images/profiles/ran.png', 10, 4),
+      _makePost('ran', 'assets/images/profiles/ran.png', 9, 4),
+      _makePost('ran', 'assets/images/profiles/ran.png', 8, 3),
+      _makePost('ran', 'assets/images/profiles/ran.png', 7, 3),
+      _makePost('ran', 'assets/images/profiles/ran.png', 6, 3),
+      _makePost('ran', 'assets/images/profiles/ran.png', 5, 4),
+      _makePost('ran', 'assets/images/profiles/ran.png', 4, 4),
+      _makePost('ran', 'assets/images/profiles/ran.png', 3, 3),
+      _makePost('ran', 'assets/images/profiles/ran.png', 2, 3),
+      _makePost('ran', 'assets/images/profiles/ran.png', 1, 2),
     ],
   ),
 
@@ -117,6 +116,17 @@ final Map<String, UserModel> MOCK_USERS = {
     posts: [
       _makePost('shinichi', 'assets/images/profiles/shinichi.png', 13, 12),
       _makePost('shinichi', 'assets/images/profiles/shinichi.png', 12, 4),
+      _makePost('shinichi', 'assets/images/profiles/shinichi.png', 11, 4),
+      _makePost('shinichi', 'assets/images/profiles/shinichi.png', 10, 4),
+      _makePost('shinichi', 'assets/images/profiles/shinichi.png', 9, 4),
+      _makePost('shinichi', 'assets/images/profiles/shinichi.png', 8, 3),
+      _makePost('shinichi', 'assets/images/profiles/shinichi.png', 7, 3),
+      _makePost('shinichi', 'assets/images/profiles/shinichi.png', 6, 3),
+      _makePost('shinichi', 'assets/images/profiles/shinichi.png', 5, 2),
+      _makePost('shinichi', 'assets/images/profiles/shinichi.png', 4, 3),
+      _makePost('shinichi', 'assets/images/profiles/shinichi.png', 3, 2),
+      _makePost('shinichi', 'assets/images/profiles/shinichi.png', 2, 3),
+      _makePost('shinichi', 'assets/images/profiles/shinichi.png', 1, 2),
     ],
   ),
 
@@ -131,6 +141,17 @@ final Map<String, UserModel> MOCK_USERS = {
     posts: [
       _makePost('conan', 'assets/images/profiles/conan.png', 13, 4),
       _makePost('conan', 'assets/images/profiles/conan.png', 12, 3),
+      _makePost('conan', 'assets/images/profiles/conan.png', 11, 3),
+      _makePost('conan', 'assets/images/profiles/conan.png', 10, 2),
+      _makePost('conan', 'assets/images/profiles/conan.png', 9, 3),
+      _makePost('conan', 'assets/images/profiles/conan.png', 8, 2),
+      _makePost('conan', 'assets/images/profiles/conan.png', 7, 3),
+      _makePost('conan', 'assets/images/profiles/conan.png', 6, 3),
+      _makePost('conan', 'assets/images/profiles/conan.png', 5, 4),
+      _makePost('conan', 'assets/images/profiles/conan.png', 4, 3),
+      _makePost('conan', 'assets/images/profiles/conan.png', 3, 2),
+      _makePost('conan', 'assets/images/profiles/conan.png', 2, 3),
+      _makePost('conan', 'assets/images/profiles/conan.png', 1, 2),
     ],
   ),
 
@@ -145,6 +166,7 @@ final Map<String, UserModel> MOCK_USERS = {
     posts: [
       _makePost('rose', 'assets/images/profiles/rose.png', 3, 3),
       _makePost('rose', 'assets/images/profiles/rose.png', 2, 2),
+      _makePost('rose', 'assets/images/profiles/rose.png', 1, 2),
     ],
   ),
 
@@ -159,6 +181,18 @@ final Map<String, UserModel> MOCK_USERS = {
     posts: [
       _makePost('famous', 'assets/images/profiles/famous.png', 14, 4),
       _makePost('famous', 'assets/images/profiles/famous.png', 13, 4),
+      _makePost('famous', 'assets/images/profiles/famous.png', 12, 3),
+      _makePost('famous', 'assets/images/profiles/famous.png', 11, 3),
+      _makePost('famous', 'assets/images/profiles/famous.png', 10, 4),
+      _makePost('famous', 'assets/images/profiles/famous.png', 9, 3),
+      _makePost('famous', 'assets/images/profiles/famous.png', 8, 4),
+      _makePost('famous', 'assets/images/profiles/famous.png', 7, 4),
+      _makePost('famous', 'assets/images/profiles/famous.png', 6, 4),
+      _makePost('famous', 'assets/images/profiles/famous.png', 5, 2),
+      _makePost('famous', 'assets/images/profiles/famous.png', 4, 3),
+      _makePost('famous', 'assets/images/profiles/famous.png', 3, 3),
+      _makePost('famous', 'assets/images/profiles/famous.png', 2, 2),
+      _makePost('famous', 'assets/images/profiles/famous.png', 1, 3),
     ],
   ),
 
@@ -173,6 +207,7 @@ final Map<String, UserModel> MOCK_USERS = {
     posts: [
       _makePost('areum', 'assets/images/profiles/areum.png', 3, 3),
       _makePost('areum', 'assets/images/profiles/areum.png', 2, 3),
+      _makePost('areum', 'assets/images/profiles/areum.png', 1, 3),
     ],
   ),
 
@@ -187,6 +222,7 @@ final Map<String, UserModel> MOCK_USERS = {
     posts: [
       _makePost('mungchi', 'assets/images/profiles/mungchi.png', 3, 2),
       _makePost('mungchi', 'assets/images/profiles/mungchi.png', 2, 3),
+      _makePost('mungchi', 'assets/images/profiles/mungchi.png', 1, 3),
     ],
   ),
 
