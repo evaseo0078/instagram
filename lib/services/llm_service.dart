@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 class LlmService {
   // ⭐️ 2단계에서 발급받은 본인의 OpenRouter API 키를 여기에 붙여넣으세요
   static const String _apiKey =
-      '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';
+      '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';
 
   static const String _apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
 

@@ -1,10 +1,13 @@
+// 📍 lib/screens/profile_screen.dart (전체 덮어쓰기)
+
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:instagram/models/post_model.dart'; // ⭐️ PostModel import 필수
+import 'package:instagram/models/post_model.dart';
 import 'package:instagram/models/user_model.dart';
 import 'package:instagram/screens/edit_profile_screen.dart';
 import 'package:instagram/screens/following_list_screen.dart';
 import 'package:instagram/utils/colors.dart';
+import 'package:instagram/data/mock_data.dart'; // ⭐️ 데이터 접근
 
 class ProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -21,13 +24,35 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isFollowing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 팔로우 상태 확인
+    final myUser = MOCK_USERS['brown']!;
+    _isFollowing = myUser.followingUsernames.contains(widget.user.username);
+  }
+
+  void _toggleFollow() {
+    setState(() {
+      _isFollowing = !_isFollowing;
+      final myUser = MOCK_USERS['brown']!;
+      if (_isFollowing) {
+        if (!myUser.followingUsernames.contains(widget.user.username)) {
+          myUser.followingUsernames.add(widget.user.username);
+        }
+      } else {
+        myUser.followingUsernames.remove(widget.user.username);
+      }
+    });
+  }
+
   Future<void> _navigateToEditProfile() async {
     if (!widget.isMyProfile) return;
 
-    // ⭐️ 1. 현재 프로필 사진이 File 경로인지 확인하여 File 객체 또는 null 전달
     File? currentProfilePicFile;
     if (!widget.user.profilePicAsset.startsWith('assets/')) {
-      // Asset 경로가 아니면 File 경로로 간주
       currentProfilePicFile = File(widget.user.profilePicAsset);
     }
 
@@ -37,7 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         builder: (context) => EditProfileScreen(
           currentName: widget.user.name,
           currentBio: widget.user.bio,
-          currentProfilePic: currentProfilePicFile, // ⭐️ File 객체 전달
+          currentProfilePic: currentProfilePicFile,
         ),
       ),
     );
@@ -46,15 +71,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         widget.user.name = result['name'];
         widget.user.bio = result['bio'];
-
-        // ⭐️ 2. 프로필 이미지 경로 업데이트
         final newImageFile = result['image'] as File?;
         if (newImageFile != null) {
-          widget.user.profilePicAsset =
-              newImageFile.path; // File 경로 (String) 저장
-        } else if (result.containsKey('image')) {
-          // 사진이 null로 돌아온 경우 (삭제됨)
-          widget.user.profilePicAsset = 'assets/images/profiles/my_profile.png';
+          widget.user.profilePicAsset = newImageFile.path;
         }
       });
     }
@@ -62,10 +81,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final myPosts = widget.user.posts;
+    // ⭐️ 타입 명시 (List<PostModel>)
+    final List<PostModel> myPosts = widget.user.posts;
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: backgroundColor,
+        leading: widget.isMyProfile
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back, color: primaryColor),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         title: Text(
           widget.user.username,
           style:
@@ -74,10 +101,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           if (widget.isMyProfile) ...[
             IconButton(
-              icon: const Icon(Icons.add_box_outlined),
-              onPressed: () {},
-            ),
-            IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
+                icon: const Icon(Icons.add_box_outlined, color: primaryColor),
+                onPressed: () {}),
+            IconButton(
+                icon: const Icon(Icons.menu, color: primaryColor),
+                onPressed: () {}),
           ]
         ],
       ),
@@ -93,6 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // 프로필 사진 및 팔로잉 정보
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -103,25 +132,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       .startsWith('assets/')
                                   ? AssetImage(widget.user.profilePicAsset)
                                       as ImageProvider
-                                  : FileImage(File(widget.user.profilePicAsset))
-                                      as ImageProvider,
+                                  : FileImage(
+                                      File(widget.user.profilePicAsset)),
                             ),
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => FollowingListScreen(
-                                      followingUsernames:
-                                          widget.user.followingUsernames,
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: _buildStatColumn(
-                                  widget.user.followingUsernames.length
-                                      .toString(),
-                                  'Following'),
+                            // 팔로워/팔로잉 스탯 (간략화)
+                            Row(
+                              children: [
+                                _buildStatColumn('${myPosts.length}', 'Posts'),
+                                const SizedBox(width: 20),
+                                _buildStatColumn('${widget.user.followerCount}',
+                                    'Followers'),
+                                const SizedBox(width: 20),
+                                GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  FollowingListScreen(
+                                                      followingUsernames: widget
+                                                          .user
+                                                          .followingUsernames)));
+                                    },
+                                    child: _buildStatColumn(
+                                        '${widget.user.followingUsernames.length}',
+                                        'Following')),
+                              ],
                             ),
                           ],
                         ),
@@ -132,6 +168,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 4),
                         Text(widget.user.bio),
                         const SizedBox(height: 16),
+
+                        // ⭐️ 팔로우 / 편집 버튼
                         SizedBox(
                           width: double.infinity,
                           child: widget.isMyProfile
@@ -145,16 +183,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   child: const Text('Edit profile',
                                       style: TextStyle(color: primaryColor)),
                                 )
-                              : ElevatedButton(
-                                  onPressed: () {},
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue,
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8)),
-                                  ),
-                                  child: const Text('Follow',
-                                      style: TextStyle(color: Colors.white)),
-                                ),
+                              : _isFollowing
+                                  ? OutlinedButton(
+                                      onPressed: _toggleFollow,
+                                      style: OutlinedButton.styleFrom(
+                                        backgroundColor: Colors.grey[200],
+                                        side: BorderSide.none,
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8)),
+                                      ),
+                                      child: const Text('Following',
+                                          style: TextStyle(
+                                              color: primaryColor,
+                                              fontWeight: FontWeight.bold)),
+                                    )
+                                  : ElevatedButton(
+                                      onPressed: _toggleFollow,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue,
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8)),
+                                      ),
+                                      child: const Text('Follow',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold)),
+                                    ),
                         ),
                       ],
                     ),
@@ -180,7 +236,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           body: TabBarView(
             children: [
               _buildPostGrid(myPosts),
-              _buildReelsGrid(myPosts), // 릴스는 없는 경우 빈 화면 처리됨
+              const Center(child: Text("No Reels yet")),
             ],
           ),
         ),
@@ -198,11 +254,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ⭐️ 수정됨: List<dynamic> -> List<PostModel>
   Widget _buildPostGrid(List<PostModel> posts) {
     if (posts.isEmpty) return const Center(child: Text("No posts yet"));
     return GridView.builder(
-      shrinkWrap: true,
+      padding: EdgeInsets.zero,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
@@ -212,24 +267,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       itemCount: posts.length,
       itemBuilder: (context, index) {
         final post = posts[index];
-        // ⭐️ 수정됨: post.images[0] (리스트의 첫 번째 사진) 사용
-        return _buildGridImage(post.images.isNotEmpty ? post.images[0] : '');
+        final imagePath = post.images.isNotEmpty ? post.images[0] : '';
+
+        if (imagePath.isEmpty) return Container(color: Colors.grey);
+        if (imagePath.startsWith('assets/')) {
+          return Image.asset(imagePath, fit: BoxFit.cover);
+        }
+        return Image.file(File(imagePath), fit: BoxFit.cover);
       },
     );
-  }
-
-  // ⭐️ 릴스 그리드 (구색만 갖춤)
-  Widget _buildReelsGrid(List<PostModel> posts) {
-    // 실제로는 videoUrl이 있는 것만 필터링해야 하지만, 일단 비워둡니다.
-    return const Center(child: Text("No Reels yet"));
-  }
-
-  Widget _buildGridImage(String imagePath) {
-    if (imagePath.isEmpty) return Container(color: Colors.grey);
-    if (imagePath.startsWith('assets/')) {
-      return Image.asset(imagePath, fit: BoxFit.cover);
-    }
-    return Image.file(File(imagePath), fit: BoxFit.cover);
   }
 }
 
