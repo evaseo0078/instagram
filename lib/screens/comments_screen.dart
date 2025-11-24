@@ -3,6 +3,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:instagram/utils/colors.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class CommentsScreen extends StatefulWidget {
   final List<Map<String, dynamic>> commentsList;
@@ -195,8 +196,17 @@ class _CommentsScreenState extends State<CommentsScreen> {
                               color: Colors.white, size: 22),
                         ),
                       )
-                    : const Icon(Icons.emoji_emotions_outlined,
-                        size: 28, color: Colors.grey),
+                    : Padding(
+                        padding: const EdgeInsets.only(right: 4.0),
+                        child: SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: SvgPicture.asset(
+                            'assets/icons/smile_square.svg',
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
               ],
             ),
           ),

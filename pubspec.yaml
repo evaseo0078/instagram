@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_svg: ^2.0.7
+
   # 패키지 목록
   http: ^1.2.1
   cupertino_icons: ^1.0.8
@@ -37,6 +39,7 @@ flutter:
     - assets/images/avatar_promo.png
     - assets/images/ic_instagram_logo.png
     - assets/video/
+    - assets/icons/
 
     # 2. 프로필 이미지 폴더
     - assets/images/profiles/
@@ -55,3 +58,4 @@ flutter:
     - assets/images/posts/shinichi/
     - assets/images/posts/sin_police/
     - assets/images/posts/triangle/
+  
