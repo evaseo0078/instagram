@@ -181,15 +181,22 @@ class _CommentsScreenState extends State<CommentsScreen> {
                     ),
                   ),
                 ),
-                // ⭐️ 입력 중이면 'Post' 글씨, 아니면 '이모티콘' 아이콘
                 _isComposing
-                    ? TextButton(
-                        onPressed: _postComment,
-                        child: const Icon(Icons.arrow_upward,
-                            color: Colors.blue), // 전송 화살표
+                    ? GestureDetector(
+                        onTap: _postComment,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(Icons.arrow_upward,
+                              color: Colors.white, size: 22),
+                        ),
                       )
-                    : const Text('😊',
-                        style: TextStyle(fontSize: 24)), // 임시 이모티콘
+                    : const Icon(Icons.emoji_emotions_outlined,
+                        size: 28, color: Colors.grey),
               ],
             ),
           ),

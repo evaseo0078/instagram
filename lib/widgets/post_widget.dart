@@ -87,29 +87,43 @@ class _PostWidgetState extends State<PostWidget> {
         ),
 
         // 2. 이미지 (4:3 비율, 꽉 차게)
+        // 2. 이미지 (⭐️ 원본 비율 유지)
         GestureDetector(
           onDoubleTap: _handleDoubleTapLike,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              AspectRatio(
-                aspectRatio: 4 / 3,
-                child: PageView.builder(
-                  itemCount: widget.post.images.length,
-                  onPageChanged: (index) =>
-                      setState(() => _currentImageIndex = index),
-                  itemBuilder: (context, index) {
-                    final imagePath = widget.post.images[index];
-                    // ⭐️ BoxFit.cover를 사용하되, 4:3 비율 틀에 맞춥니다.
-                    // (이미지 자체가 4:3이면 원본 그대로, 아니면 꽉 차게 나옵니다)
-                    if (imagePath.startsWith('assets/')) {
-                      return Image.asset(imagePath, fit: BoxFit.cover);
-                    } else {
-                      return Image.file(File(imagePath), fit: BoxFit.cover);
-                    }
-                  },
-                ),
-              ),
+              // ⭐️ AspectRatio 제거! 대신 Container로 감싸지 않고 바로 PageView를 쓰려면 높이가 필요함.
+              // 하지만 원본 비율을 유지하려면 PageView 대신 그냥 Image를 써야 함.
+              // (여러 장일 땐 PageView가 필수라 높이가 필요하지만, 인스타그램은 보통 1:1이나 4:5로 자름)
+              // 여기서는 "가로폭에 맞춰 높이 자동 조절"을 위해 아래처럼 처리합니다.
+
+              widget.post.images.length > 1
+                  ? SizedBox(
+                      // 여러 장일 땐 어쩔 수 없이 높이를 지정해야 함 (인스타도 1:1 권장)
+                      height: 400, // 혹은 MediaQuery.of(context).size.width (1:1)
+                      child: PageView.builder(
+                        itemCount: widget.post.images.length,
+                        onPageChanged: (index) =>
+                            setState(() => _currentImageIndex = index),
+                        itemBuilder: (context, index) {
+                          final imagePath = widget.post.images[index];
+                          if (imagePath.startsWith('assets/')) {
+                            return Image.asset(imagePath,
+                                fit: BoxFit.contain); // ⭐️ 잘리지 않게 contain
+                          } else {
+                            return Image.file(File(imagePath),
+                                fit: BoxFit.contain);
+                          }
+                        },
+                      ),
+                    )
+                  : // 한 장일 땐 높이 제한 없이 원본 비율 그대로 출력!
+                  (widget.post.images[0].startsWith('assets/')
+                      ? Image.asset(widget.post.images[0], fit: BoxFit.cover)
+                      : Image.file(File(widget.post.images[0]),
+                          fit: BoxFit.cover)),
+
               AnimatedOpacity(
                 opacity: _isBigHeartVisible ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 200),
@@ -170,8 +184,8 @@ class _PostWidgetState extends State<PostWidget> {
               // ⭐️ 리포스트 아이콘 (더 얇은 것으로 교체)
               InkWell(
                 onTap: () {},
-                // paperplane(종이비행기) 옆에 있는 얇은 순환 아이콘과 유사한 것 사용
-                child: const Icon(CupertinoIcons.arrow_2_circlepath, size: 28),
+                // 네모난 리포스트 느낌의 아이콘 사용
+                child: const Icon(Icons.repeat, size: 28),
               ),
               const SizedBox(width: 16),
 
