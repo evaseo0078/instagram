@@ -4,11 +4,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class LlmService {
-  // ⭐️ 2단계에서 발급받은 본인의 OpenRouter API 키를 여기에 붙여넣으세요
-  static const String _apiKey =
-      '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';
+  // .env에서 API 키를 불러옵니다
+  static String get _apiKey => dotenv.env['OPENROUTER_API_KEY'] ?? '';
 
   static const String _apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
