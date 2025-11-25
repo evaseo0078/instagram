@@ -41,6 +41,7 @@ flutter:
     - assets/images/ic_instagram_logo.png
     - assets/video/
     - assets/icons/
+    - .env
 
     # 2. 프로필 이미지 폴더
     - assets/images/profiles/

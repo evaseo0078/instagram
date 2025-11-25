@@ -1,5 +1,4 @@
-// 📍 lib/services/llm_service.dart (신규 파일)
-// 복붙할 떄 API 키 유출 주의!
+// 📍 lib/services/llm_service.dart
 
 import 'dart:convert';
 import 'dart:io';
@@ -12,7 +11,19 @@ class LlmService {
 
   static const String _apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
-  // 텍스트 질문 -> 텍스트 답변 (영상 0:40)
+  // ⭐️ 텍스트 정제 함수 (이상한 기호 제거)
+  static String _cleanResponse(String text) {
+    return text
+        .replaceAll('<s>', '') // 시작 태그 제거
+        .replaceAll('</s>', '') // 종료 태그 제거
+        .replaceAll('[/s]', '') // 이상한 종료 태그 제거
+        .replaceAll('[OUT]', '') // 출력 태그 제거
+        .replaceAll('[/OUT]', '') // 출력 종료 태그 제거
+        .replaceAll(RegExp(r'<.*?>'), '') // 혹시 모를 다른 괄호 태그 제거
+        .trim(); // 앞뒤 공백 제거
+  }
+
+  // 텍스트 질문 -> 텍스트 답변
   static Future<String> getChatResponse(String prompt) async {
     try {
       final response = await http.post(
@@ -22,7 +33,8 @@ class LlmService {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          // ⭐️ 텍스트용 무료 모델 (Mistral 7B)
+          // ⭐️ 모델을 조금 더 안정적인 Llama 3로 변경하는 것을 추천합니다 (선택사항)
+          // 기존: 'mistralai/mistral-7b-instruct:free',
           'model': 'mistralai/mistral-7b-instruct:free',
           'messages': [
             {'role': 'user', 'content': prompt}
@@ -32,7 +44,10 @@ class LlmService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data['choices'][0]['message']['content'];
+        String rawContent = data['choices'][0]['message']['content'];
+
+        // ⭐️ 여기서 정제 함수를 통해 깨끗한 텍스트만 반환
+        return _cleanResponse(rawContent);
       } else {
         print('LLM Error: ${response.statusCode}');
         print('LLM Body: ${response.body}');
@@ -44,15 +59,12 @@ class LlmService {
     }
   }
 
-  // 이미지 + 텍스트 질문 -> 텍스트 답변 (영상 1:12) [cite: 38]
-  // (영상 1:15의 하단 프리뷰, 1:28의 LLM 응답 관련)
+  // 이미지 + 텍스트 질문 -> 텍스트 답변
   static Future<String> getVisionResponse(File imageFile, String prompt) async {
     try {
-      // 1. 이미지를 Base64로 인코딩
       final List<int> imageBytes = await imageFile.readAsBytes();
       final String base64Image = base64Encode(imageBytes);
 
-      // 2. 이미지 MIME 타입 확인 (간단하게)
       final String mimeType =
           imageFile.path.endsWith('.png') ? 'image/png' : 'image/jpeg';
 
@@ -63,9 +75,6 @@ class LlmService {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          // ⭐️ 요청하신 Vision 모델 (Gemini Pro Vision, 무료 티어)
-          // (NVIDIA 모델은 유료이거나 API 형식이 다를 수 있어,
-          // 확실하게 작동하는 무료 모델인 Gemini로 대체했습니다.)
           'model': 'google/gemini-pro-vision',
           'messages': [
             {
@@ -81,13 +90,16 @@ class LlmService {
               ],
             }
           ],
-          'max_tokens': 300, // Vision 모델은 응답 길이를 정해주는 것이 좋습니다.
+          'max_tokens': 300,
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data['choices'][0]['message']['content'];
+        String rawContent = data['choices'][0]['message']['content'];
+
+        // ⭐️ 여기도 정제 함수 적용
+        return _cleanResponse(rawContent);
       } else {
         print('LLM (Vision) Error: ${response.statusCode}');
         print('LLM (Vision) Body: ${response.body}');
