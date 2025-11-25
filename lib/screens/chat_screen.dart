@@ -1,32 +1,17 @@
+// 📍 lib/screens/chat_screen.dart (전체 덮어쓰기)
+
 import 'dart:async';
 import 'dart:io';
-import 'dart:math'; // ⭐️ sin 함수용
+import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:instagram/services/llm_service.dart';
 import 'package:instagram/utils/colors.dart';
-import 'package:intl/intl.dart'; // ⭐️ 시간 포맷용 (pub add intl 필요)
-
-enum MessageStatus { sending, sent, seen }
-
-class ChatMessage {
-  final String text;
-  final bool isSentByMe;
-  final File? imageFile;
-  MessageStatus status;
-  final bool animate;
-  final DateTime timestamp;
-
-  ChatMessage({
-    required this.text,
-    required this.isSentByMe,
-    this.imageFile,
-    this.status = MessageStatus.sent,
-    this.animate = false,
-    required this.timestamp,
-  });
-}
+import 'package:intl/intl.dart';
+// ⭐️ 새로 만든 파일들 import
+import 'package:instagram/models/chat_message.dart';
+import 'package:instagram/data/chat_data.dart';
 
 class ChatScreen extends StatefulWidget {
   final String username;
@@ -44,7 +29,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final TextEditingController _messageController = TextEditingController();
-  final List<ChatMessage> _messages = [];
+  late List<ChatMessage> _messages; // ⭐️ 로컬 변수가 아니라 ChatData 참조 변수
   final ImagePicker _picker = ImagePicker();
   final ScrollController _scrollController = ScrollController();
 
@@ -54,22 +39,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    // 초기 메시지 (Ran Mouri)
-    if (widget.username == "Ran Mouri" || widget.username.contains("Ran")) {
-      final now = DateTime.now();
-      _messages.addAll([
-        ChatMessage(
-            text: "Nice to meet you!",
-            isSentByMe: true,
-            status: MessageStatus.seen,
-            timestamp: now.subtract(const Duration(minutes: 20))),
-        ChatMessage(
-            text: "Hi!",
-            isSentByMe: true,
-            status: MessageStatus.seen,
-            timestamp: now.subtract(const Duration(minutes: 21))),
-      ]);
-    }
+    // ⭐️ ChatData에서 이 유저와의 대화 기록을 가져옴 (참조)
+    _messages = ChatData.getMessages(widget.username);
+
     _messageController.addListener(() {
       setState(() {
         _isTyping = _messageController.text.isNotEmpty;
@@ -99,17 +71,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
 
     setState(() {
+      // ⭐️ _messages에 추가하면 ChatData에도 자동으로 추가됨 (참조이므로)
       _messages.insert(0, newMessage);
     });
 
-    // 전송 완료
     Timer(const Duration(seconds: 1), () {
-      if (mounted) {
-        setState(() => newMessage.status = MessageStatus.sent);
-      }
+      if (mounted) setState(() => newMessage.status = MessageStatus.sent);
     });
 
-    // 읽음 처리 후 LLM 호출
     Timer(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() {
@@ -123,7 +92,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   Future<void> _getLlmResponse(String text) async {
     try {
-      await Future.delayed(const Duration(seconds: 2)); // 타이핑 연출
+      await Future.delayed(const Duration(seconds: 2));
       final response = await LlmService.getChatResponse(text);
 
       if (mounted) {
@@ -204,7 +173,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 final msgIndex = _isLlmTyping ? index - 1 : index;
                 final message = _messages[msgIndex];
 
-                // 시간 표시 로직 (15분 간격)
+                // 15분 시간 표시 로직
                 bool showTime = false;
                 if (msgIndex == _messages.length - 1) {
                   showTime = true;
@@ -225,6 +194,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       ),
     );
   }
+
+  // ... (나머지 _buildTypingIndicator, _buildMessageBubble, _buildInputArea, TypingDots 클래스는
+  //      이전 코드와 **완벽히 동일**하므로 그대로 두시면 됩니다!)
 
   Widget _buildTypingIndicator() {
     return Padding(
@@ -251,8 +223,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final isMe = message.isSentByMe;
     final showSeen = isMe && message.status == MessageStatus.seen && index == 0;
 
-    String formattedTime =
-        "Today ${DateFormat('h:mm a').format(message.timestamp)}";
+    // 날짜 포맷: 오늘이면 시간만, 아니면 날짜+시간
+    String formattedTime;
+    final now = DateTime.now();
+    if (message.timestamp.day == now.day &&
+        message.timestamp.month == now.month &&
+        message.timestamp.year == now.year) {
+      formattedTime = "Today ${DateFormat('h:mm a').format(message.timestamp)}";
+    } else {
+      formattedTime = DateFormat('MMM d, h:mm a').format(message.timestamp);
+    }
 
     return Column(
       children: [
@@ -266,7 +246,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           crossAxisAlignment:
               isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            // 말풍선 애니메이션
             TweenAnimationBuilder(
               duration: const Duration(milliseconds: 300),
               tween: Tween<Offset>(
@@ -291,7 +270,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     const SizedBox(width: 8),
                   ],
                   Container(
-                    // ⭐️ 오버플로우 방지: 화면 너비의 65%로 제한
                     constraints: BoxConstraints(
                         maxWidth: MediaQuery.of(context).size.width * 0.65),
                     padding: const EdgeInsets.symmetric(
@@ -319,8 +297,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 ],
               ),
             ),
-
-            // 내가 보낸 메시지 상태 (Seen 등)
             if (showSeen || (isMe && message.text == "Nice to meet you!"))
               Padding(
                 padding: const EdgeInsets.only(top: 2, bottom: 8),
@@ -331,11 +307,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     style:
                         const TextStyle(color: secondaryColor, fontSize: 12)),
               ),
-
-            // ⭐️ [수정] Tap and hold to react 로직
-            // 1. 받은 메시지여야 함 (!isMe)
-            // 2. 가장 최신 메시지여야 함 (index == 0)
-            // 3. LLM이 타이핑 중이 아니어야 함 (!_isLlmTyping) -> 이건 리스트 구조상 자연스럽게 처리됨
             if (!isMe && index == 0)
               const Padding(
                 padding: EdgeInsets.only(left: 40, top: 4, bottom: 8),
@@ -399,7 +370,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               ),
             )
           else
-            // ⭐️ 오버플로우 방지: 아이콘 사이즈와 간격 미세 조정
             Row(
               children: const [
                 Icon(CupertinoIcons.mic, size: 26),

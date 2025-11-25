@@ -1,39 +1,66 @@
-// 📍 lib/screens/dm_list_screen.dart (전체 수정)
+// 📍 lib/screens/dm_list_screen.dart (전체 덮어쓰기)
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:instagram/data/mock_data.dart'; // ⭐️ 데이터 연동
+import 'package:instagram/data/mock_data.dart';
 import 'package:instagram/models/user_model.dart';
 import 'package:instagram/screens/chat_screen.dart';
 import 'package:instagram/utils/colors.dart';
+import 'package:instagram/data/chat_data.dart'; // ⭐️ ChatData import
+import 'package:instagram/models/chat_message.dart';
 
-class DmListScreen extends StatelessWidget {
+class DmListScreen extends StatefulWidget {
   const DmListScreen({super.key});
 
   @override
+  State<DmListScreen> createState() => _DmListScreenState();
+}
+
+class _DmListScreenState extends State<DmListScreen> {
+  // 시간 차이 포맷팅 함수 (1h ago, 3m ago 등)
+  String _formatTime(DateTime timestamp) {
+    final diff = DateTime.now().difference(timestamp);
+    if (diff.inDays > 0) {
+      return "${diff.inDays}d ago";
+    } else if (diff.inHours > 0) {
+      return "${diff.inHours}h ago";
+    } else if (diff.inMinutes > 0) {
+      return "${diff.inMinutes}m ago";
+    } else {
+      return "now";
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // 내 정보 (brown 박사님)
     final myUser = MOCK_USERS['brown']!;
 
-    // ⭐️ DM 리스트 데이터 (MOCK_USERS와 연동 및 순서 정렬)
-    // 1. kid_go (3m ago) - 위쪽
-    // 2. ran (Seen) - 아래쪽
-    final List<Map<String, dynamic>> dmList = [
-      {
-        "user": MOCK_USERS['kid_go'], // 실제 유저 객체 연결
-        "lastMessage": "Sent 3m ago",
-        "isSeen": false, // 내가 보낸 메시지 (검정색)
-        "timestamp": DateTime.now().subtract(const Duration(minutes: 3)),
-      },
-      {
-        "user": MOCK_USERS['ran'],
-        "lastMessage": "Seen",
-        "isSeen": true, // 읽음 처리됨 (회색)
-        "timestamp": DateTime.now().subtract(const Duration(hours: 1)),
-      },
-    ];
+    // ⭐️ 1. 채팅 데이터 가져오기 & 가공
+    List<Map<String, dynamic>> dmList = [];
 
-    // ⭐️ 시간 순서대로 정렬 (최신순: timestamp가 큰 게 위로)
+    // MOCK_USERS 중 ChatData에 데이터가 있는 유저만 찾기
+    // (여기선 kid_go와 ran만 예시로 사용)
+    final targetUsers = ['kid_go', 'ran']; // 화면에 표시할 유저 목록
+
+    for (var userId in targetUsers) {
+      final user = MOCK_USERS[userId]!;
+      // ChatData에서 해당 유저 이름(예: Kaito Kid)으로 메시지 가져옴
+      // MOCK_USERS의 name 속성과 ChatData의 키가 일치해야 함
+      final messages = ChatData.getMessages(user.name);
+
+      if (messages.isNotEmpty) {
+        final lastMsg = messages.first; // 최신 메시지 (insert(0) 했으므로)
+        dmList.add({
+          "user": user,
+          "lastMessage": lastMsg.text,
+          "isSeen": lastMsg.status == MessageStatus.seen,
+          "timestamp": lastMsg.timestamp,
+          "timeString": _formatTime(lastMsg.timestamp), // "1h ago" 등
+        });
+      }
+    }
+
+    // ⭐️ 2. 시간 순 정렬 (최신이 위로)
     dmList.sort((a, b) => b['timestamp'].compareTo(a['timestamp']));
 
     return Scaffold(
@@ -45,12 +72,11 @@ class DmListScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: primaryColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        // ⭐️ 1. 내 아이디 변경 (ph.brown)
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              myUser.username, // "ph.brown"
+              myUser.username,
               style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -94,7 +120,7 @@ class DmListScreen extends StatelessWidget {
             ),
           ),
 
-          // ⭐️ 2. Note (말풍선 위치 조정)
+          // Note 섹션 (이전과 동일)
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -102,15 +128,13 @@ class DmListScreen extends StatelessWidget {
               children: [
                 Column(
                   children: [
-                    // 말풍선
                     Container(
-                      // ⭐️ 간격을 2로 줄여서 프로필 사진과 더 가깝게 붙임
                       margin: const EdgeInsets.only(bottom: 2),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(20), // 더 둥글게
+                        borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
                               color: Colors.black.withOpacity(0.05),
@@ -125,12 +149,11 @@ class DmListScreen extends StatelessWidget {
                             fontSize: 11, color: Colors.black87, height: 1.2),
                       ),
                     ),
-                    // 내 프로필 사진 + 플러스 아이콘
                     Stack(
                       alignment: Alignment.bottomRight,
                       children: [
                         CircleAvatar(
-                          radius: 32, // 사진 크기 약간 키움
+                          radius: 32,
                           backgroundImage: AssetImage(myUser.profilePicAsset),
                         ),
                         Container(
@@ -153,7 +176,7 @@ class DmListScreen extends StatelessWidget {
             ),
           ),
 
-          // ⭐️ 5. Messages 헤더 + 벨 아이콘 추가
+          // Messages 헤더
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -166,7 +189,6 @@ class DmListScreen extends StatelessWidget {
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16)),
                     SizedBox(width: 8),
-                    // ⭐️ 벨 울림 안됨 아이콘
                     Icon(CupertinoIcons.bell_slash,
                         size: 16, color: secondaryColor),
                   ],
@@ -177,49 +199,60 @@ class DmListScreen extends StatelessWidget {
             ),
           ),
 
-          // ⭐️ 3 & 4. 메시지 리스트 (데이터 연동 + 순서 변경)
+          // ⭐️ 3. DM 리스트 렌더링
           ...dmList.map((dm) {
-            final UserModel user = dm['user']; // UserModel 객체
+            final UserModel user = dm['user'];
             final String lastMessage = dm['lastMessage'];
-            final bool isSeen = dm['isSeen'];
+            // ⭐️ Sent 시간 표시 (Sent 1h ago 등)
+            final String timeString = dm['timeString'];
+
+            // 메시지 내용이 너무 길면 자르기
+            String subtitleText = lastMessage.length > 20
+                ? "${lastMessage.substring(0, 20)}..."
+                : lastMessage;
+
+            // 내가 보낸 메시지나 LLM 메시지면 "Sent" 붙이기 (Seen 상태가 아니면)
+            if (!dm['isSeen']) {
+              subtitleText = "$subtitleText · $timeString";
+            } else {
+              subtitleText = "Seen · $timeString";
+            }
 
             return ListTile(
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
               leading: CircleAvatar(
                 radius: 26,
-                backgroundImage:
-                    AssetImage(user.profilePicAsset), // ⭐️ 실제 프로필 사진
+                backgroundImage: AssetImage(user.profilePicAsset),
               ),
-              title: Text(user.name,
-                  style:
-                      const TextStyle(fontSize: 14)), // ⭐️ 실제 이름 (Kaito Kid 등)
+              title: Text(user.name, style: const TextStyle(fontSize: 14)),
               subtitle: Text(
-                lastMessage,
+                subtitleText,
                 style: TextStyle(
-                  color: isSeen ? secondaryColor : primaryColor, // Seen은 회색
+                  color: secondaryColor,
                   fontSize: 14,
-                  fontWeight: isSeen ? FontWeight.normal : FontWeight.w500,
                 ),
               ),
               trailing: const Icon(CupertinoIcons.camera,
                   color: secondaryColor, size: 26),
-              onTap: () {
-                // 채팅방으로 이동 (데이터 전달)
-                Navigator.push(
+              onTap: () async {
+                // ⭐️ 채팅방 갔다가 돌아오면 화면 갱신 (순서 바뀜 반영)
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => ChatScreen(
-                      username: user.name, // 채팅방 제목
+                      username: user.name,
                       profilePicAsset: user.profilePicAsset,
                     ),
                   ),
                 );
+                // 돌아왔을 때
+                if (mounted) setState(() {});
               },
             );
           }).toList(),
 
-          // 하단 친구 추천 섹션
+          // 하단 친구 추천 (동일)
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
             child: Text("Find friends to follow and message",
@@ -234,7 +267,6 @@ class DmListScreen extends StatelessWidget {
     );
   }
 
-  // ⭐️ 6. 버튼 가로 길이 통일
   Widget _buildFindFriendsItem(
       IconData icon, String title, String subtitle, String btnText) {
     return Padding(
@@ -261,9 +293,8 @@ class DmListScreen extends StatelessWidget {
               ],
             ),
           ),
-          // ⭐️ SizedBox로 감싸서 버튼 너비 고정
           SizedBox(
-            width: 90, // 가로 길이 통일
+            width: 90,
             height: 32,
             child: ElevatedButton(
               onPressed: () {},
@@ -272,7 +303,7 @@ class DmListScreen extends StatelessWidget {
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
-                padding: EdgeInsets.zero, // 패딩 제거 (SizedBox로 크기 잡음)
+                padding: EdgeInsets.zero,
               ),
               child: Text(btnText,
                   style: const TextStyle(
