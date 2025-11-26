@@ -64,7 +64,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     setState(() => _showReactHint = false);
 
     // Ran Mouri: 새 메시지 보내면 기존 Seen 제거
-    if (widget.username.contains("Ran")) {
+    if (widget.username.contains("Conan Edogawa")) {
       for (var msg in _messages) {
         if (msg.status == MessageStatus.seen) {
           msg.status = MessageStatus.sent;

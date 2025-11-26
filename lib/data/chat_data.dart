@@ -4,8 +4,8 @@ import 'package:instagram/models/chat_message.dart';
 
 class ChatData {
   static final Map<String, List<ChatMessage>> chats = {
-    // 1. Kaito Kid (kid_go)
-    'Kaito Kid': [
+    // 1. Heiji Hattori (inseong)
+    'Heiji Hattori': [
       // ⭐️ 내가 보낸 최신 메시지 "Good!" 추가 (아직 안 읽음)
       ChatMessage(
         text: "Good!",
@@ -13,7 +13,7 @@ class ChatData {
         status: MessageStatus.sent, // 읽음(Seen) 아님
         timestamp: DateTime.now().subtract(const Duration(minutes: 1)),
       ),
-      // 3분 전 (Kid가 보낸 것)
+      // 3분 전 (Heiji가 보낸 것)
       ChatMessage(
         text: "I stole the jewel! 💎",
         isSentByMe: false,
@@ -29,8 +29,8 @@ class ChatData {
       ),
     ],
 
-    // 2. Ran Mouri (그대로)
-    'Ran Mouri': [
+    // 2. Conan Edogawa (그대로)
+    'Conan Edogawa': [
       ChatMessage(
         text: "Nice to meet you!",
         isSentByMe: true,
