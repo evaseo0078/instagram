@@ -5,6 +5,7 @@ import 'package:instagram/models/feed_item.dart';
 import 'package:instagram/screens/dm_list_screen.dart';
 import 'package:instagram/widgets/post_widget.dart';
 import 'package:video_player/video_player.dart';
+import 'package:instagram/screens/notifications_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -28,7 +29,14 @@ class HomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(CupertinoIcons.heart, color: Colors.black),
-            onPressed: () {},
+            onPressed: () {
+              // ⭐️ 알림 화면으로 이동
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const NotificationsScreen()),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(CupertinoIcons.paperplane, color: Colors.black),

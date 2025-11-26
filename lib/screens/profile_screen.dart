@@ -1,4 +1,4 @@
-// 📍 lib/screens/profile_screen.dart (전체 덮어쓰기)
+// 📍 lib/screens/profile_screen.dart (최종 수정본 - 오류 해결)
 
 import 'dart:async'; // 타이머 사용
 import 'dart:io';
@@ -13,7 +13,7 @@ import 'package:instagram/screens/edit_profile_screen.dart';
 import 'package:instagram/screens/following_list_screen.dart';
 import 'package:instagram/utils/colors.dart';
 import 'package:instagram/data/mock_data.dart';
-import 'package:instagram/screens/profile_feed_screen.dart';
+import 'package:instagram/screens/profile_feed_screen.dart'; // ⭐️ 필수 import
 
 class ProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -53,7 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  // ⭐️ 사진 업로드 시작 (프로필 화면에서 바로 추가)
+  // ⭐️ 사진 업로드 시작
   Future<void> _startUploadProcess() async {
     final File? originalFile = await Navigator.push(
       context,
@@ -95,8 +95,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             HOME_FEED_SCENARIO.insert(
                 0, FeedItem(type: FeedItemType.post, post: newPost));
 
-            // ⭐️ 4. [자동 댓글] 5초 뒤 Conan 등장
-            Timer(const Duration(seconds: 5), () {
+            // 4. [자동 댓글] 30초 뒤 Conan
+            Timer(const Duration(seconds: 30), () {
               if (mounted) {
                 setState(() {
                   newPost.likes++;
@@ -240,19 +240,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     'followers'),
                                 const SizedBox(width: 20),
                                 GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (context) =>
-                                                  FollowingListScreen(
-                                                      followingUsernames: widget
-                                                          .user
-                                                          .followingUsernames)));
-                                    },
-                                    child: _buildStatColumn(
-                                        '${widget.user.followingUsernames.length}',
-                                        'following')),
+                                  onTap: () {
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                FollowingListScreen(
+                                                    followingUsernames: widget
+                                                        .user
+                                                        .followingUsernames)));
+                                  },
+                                  child: _buildStatColumn(
+                                      '${widget.user.followingUsernames.length}',
+                                      'following'),
+                                ),
                               ],
                             ),
                           ],
@@ -366,6 +367,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildPostGrid(List<PostModel> posts) {
+    // 내 프로필이면 아이템 개수 + 1 (플러스 버튼용)
     final int itemCount = widget.isMyProfile ? posts.length + 1 : posts.length;
 
     return GridView.builder(
@@ -378,7 +380,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       itemCount: itemCount,
       itemBuilder: (context, index) {
-        // 1. 내 프로필 업로드 버튼 (+)
+        // ⭐️ 1. 내 프로필의 첫 번째 칸은 '+' 버튼
         if (widget.isMyProfile && index == 0) {
           return GestureDetector(
             onTap: _startUploadProcess,
@@ -389,27 +391,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
 
-        // 2. 실제 게시물 인덱스 계산
-        // 내 프로필이면 +버튼 때문에 index가 1 밀려있으므로 -1 해줌
+        // ⭐️ 2. 게시물 인덱스 계산 (내 프로필이면 1칸씩 밀림)
         final int postIndex = widget.isMyProfile ? index - 1 : index;
         final post = posts[postIndex];
         final imagePath = post.images.isNotEmpty ? post.images[0] : '';
 
-        // ⭐️ 3. 사진 클릭 시 피드 화면으로 이동 (연동 핵심)
+        // ⭐️ 3. 클릭 시 피드 화면으로 이동
         return GestureDetector(
           onTap: () async {
-            // 피드 화면으로 이동
             await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => ProfileFeedScreen(
-                  posts: posts, // 전체 리스트 공유
-                  initialIndex: postIndex, // 클릭한 사진 위치
+                  posts: posts,
+                  initialIndex: postIndex,
                   username: widget.user.username,
                 ),
               ),
             );
-            // ⭐️ 돌아왔을 때 좋아요/댓글 변경사항 반영을 위해 화면 갱신
+            // 돌아왔을 때 화면 갱신
             if (mounted) setState(() {});
           },
           child: _buildGridImage(imagePath),
