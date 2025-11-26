@@ -3,7 +3,8 @@ import 'dart:io';
 import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart'; // 갤러리 권한 등 보조
+import 'package:photo_manager/photo_manager.dart'; // ⭐️ 실제 갤러리용
 import 'package:instagram/services/llm_service.dart';
 import 'package:instagram/utils/colors.dart';
 import 'package:intl/intl.dart';
@@ -96,7 +97,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     });
   }
 
-  // ⭐️ 수정됨: 시스템 갤러리(_picker)를 호출하지 않고 바로 커스텀 시트를 엽니다.
+  // 커스텀 갤러리 열기
   void _openCustomGallery() {
     showModalBottomSheet(
       context: context,
@@ -106,9 +107,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ⭐️ 이미지 메시지 전송
-  // (assets 경로를 받아서 처리하도록 수정됨)
-  void _sendImageMessage(String imagePath) {
+  // 이미지 메시지 전송 (File 객체 받음)
+  void _sendImageMessage(File imageFile) {
     Navigator.pop(context);
 
     final newMessage = ChatMessage(
@@ -117,8 +117,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       status: MessageStatus.sending,
       animate: true,
       timestamp: DateTime.now(),
-      // File 객체에 경로를 담지만, 실제로는 assets 경로임 (UI에서 구분 처리)
-      imageFile: File(imagePath),
+      imageFile: imageFile,
     );
 
     setState(() {
@@ -144,14 +143,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       if (mounted) {
         setState(() {
           _isLlmTyping = false;
-          _messages.insert(
-              0,
-              ChatMessage(
-                text: response,
-                isSentByMe: false,
-                animate: true,
-                timestamp: DateTime.now(),
-              ));
+          _messages.insert(0, ChatMessage(
+            text: response,
+            isSentByMe: false,
+            animate: true,
+            timestamp: DateTime.now(),
+          ));
           _showReactHint = true;
         });
 
@@ -186,26 +183,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.username,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: primaryColor)),
-                Text(widget.username,
-                    style:
-                        const TextStyle(fontSize: 12, color: secondaryColor)),
+                Text(widget.username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: primaryColor)),
+                Text(widget.username, style: const TextStyle(fontSize: 12, color: secondaryColor)),
               ],
             ),
           ],
         ),
         actions: [
-          IconButton(
-              icon: const Icon(CupertinoIcons.phone, color: primaryColor),
-              onPressed: () {}),
-          IconButton(
-              icon:
-                  const Icon(CupertinoIcons.video_camera, color: primaryColor),
-              onPressed: () {}),
+          IconButton(icon: const Icon(CupertinoIcons.phone, color: primaryColor), onPressed: () {}),
+          IconButton(icon: const Icon(CupertinoIcons.video_camera, color: primaryColor), onPressed: () {}),
         ],
       ),
       body: Column(
@@ -229,35 +215,23 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   showTime = true;
                 } else {
                   final prevMessage = _messages[msgIndex + 1];
-                  final difference = message.timestamp
-                      .difference(prevMessage.timestamp)
-                      .inMinutes;
+                  final difference = message.timestamp.difference(prevMessage.timestamp).inMinutes;
                   if (difference > 15) showTime = true;
                 }
 
                 bool isPrevSame = false;
                 if (msgIndex < _messages.length - 1) {
-                  isPrevSame = _messages[msgIndex + 1].isSentByMe ==
-                          message.isSentByMe &&
-                      message.timestamp
-                              .difference(_messages[msgIndex + 1].timestamp)
-                              .inMinutes <
-                          1;
+                  isPrevSame = _messages[msgIndex + 1].isSentByMe == message.isSentByMe &&
+                      message.timestamp.difference(_messages[msgIndex + 1].timestamp).inMinutes < 1;
                 }
 
                 bool isNextSame = false;
                 if (msgIndex > 0) {
-                  isNextSame = _messages[msgIndex - 1].isSentByMe ==
-                          message.isSentByMe &&
-                      _messages[msgIndex - 1]
-                              .timestamp
-                              .difference(message.timestamp)
-                              .inMinutes <
-                          1;
+                  isNextSame = _messages[msgIndex - 1].isSentByMe == message.isSentByMe &&
+                      _messages[msgIndex - 1].timestamp.difference(message.timestamp).inMinutes < 1;
                 }
 
-                return _buildMessageBubble(
-                    message, msgIndex, showTime, isPrevSame, isNextSame);
+                return _buildMessageBubble(message, msgIndex, showTime, isPrevSame, isNextSame);
               },
             ),
           ),
@@ -273,14 +247,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          CircleAvatar(
-              radius: 14, backgroundImage: AssetImage(widget.profilePicAsset)),
+          CircleAvatar(radius: 14, backgroundImage: AssetImage(widget.profilePicAsset)),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-                color: const Color(0xFFEFEFEF),
-                borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(color: const Color(0xFFEFEFEF), borderRadius: BorderRadius.circular(20)),
             child: const TypingDots(),
           ),
         ],
@@ -288,34 +259,27 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message, int index, bool showTime,
-      bool isPrevSame, bool isNextSame) {
+  Widget _buildMessageBubble(ChatMessage message, int index, bool showTime, bool isPrevSame, bool isNextSame) {
     final isMe = message.isSentByMe;
     final isImage = message.imageFile != null;
 
-    final showSeen =
-        isMe && !isImage && message.status == MessageStatus.seen && index == 0;
-    String formattedTime =
-        "Today ${DateFormat('h:mm a').format(message.timestamp)}";
+    final showSeen = isMe && !isImage && message.status == MessageStatus.seen && index == 0;
+    String formattedTime = "Today ${DateFormat('h:mm a').format(message.timestamp)}";
 
     BorderRadius bubbleRadius;
     if (isMe) {
       bubbleRadius = BorderRadius.only(
         topLeft: const Radius.circular(22),
         bottomLeft: const Radius.circular(22),
-        topRight:
-            isPrevSame ? const Radius.circular(4) : const Radius.circular(22),
-        bottomRight:
-            isNextSame ? const Radius.circular(4) : const Radius.circular(22),
+        topRight: isPrevSame ? const Radius.circular(4) : const Radius.circular(22),
+        bottomRight: isNextSame ? const Radius.circular(4) : const Radius.circular(22),
       );
     } else {
       bubbleRadius = BorderRadius.only(
         topRight: const Radius.circular(22),
         bottomRight: const Radius.circular(22),
-        topLeft:
-            isPrevSame ? const Radius.circular(4) : const Radius.circular(22),
-        bottomLeft:
-            isNextSame ? const Radius.circular(4) : const Radius.circular(22),
+        topLeft: isPrevSame ? const Radius.circular(4) : const Radius.circular(22),
+        bottomLeft: isNextSame ? const Radius.circular(4) : const Radius.circular(22),
       );
     }
 
@@ -324,14 +288,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         if (showTime)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(formattedTime,
-                style: const TextStyle(color: secondaryColor, fontSize: 12)),
+            child: Text(formattedTime, style: const TextStyle(color: secondaryColor, fontSize: 12)),
           ),
+
         Column(
-          crossAxisAlignment:
-              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            // 애니메이션
             TweenAnimationBuilder(
               duration: const Duration(milliseconds: 400),
               tween: Tween<Offset>(
@@ -349,95 +311,64 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 );
               },
               child: Row(
-                mainAxisAlignment:
-                    isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   if (!isMe) ...[
                     if (!isNextSame)
-                      CircleAvatar(
-                          radius: 14,
-                          backgroundImage: AssetImage(widget.profilePicAsset))
+                      CircleAvatar(radius: 14, backgroundImage: AssetImage(widget.profilePicAsset))
                     else
                       const SizedBox(width: 28),
                     const SizedBox(width: 8),
                   ],
 
-                  // ⭐️ 이미지 메시지
                   if (isImage) ...[
                     if (isMe)
                       Padding(
                         padding: const EdgeInsets.only(right: 12),
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                              color: Colors.grey[300], shape: BoxShape.circle),
-                          child: const Icon(CupertinoIcons.paperplane_fill,
-                              size: 16, color: Colors.white),
+                          decoration: BoxDecoration(color: Colors.grey[300], shape: BoxShape.circle),
+                          child: const Icon(CupertinoIcons.paperplane_fill, size: 16, color: Colors.white),
                         ),
                       ),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(20),
-                      // ⭐️ assets 경로 처리
-                      child: message.imageFile!.path.startsWith('assets/')
-                          ? Image.asset(message.imageFile!.path,
-                              width: 220, fit: BoxFit.cover)
-                          : Image.file(message.imageFile!,
-                              width: 220, fit: BoxFit.cover),
+                      // ⭐️ 실제 파일 표시
+                      child: Image.file(message.imageFile!, width: 220, fit: BoxFit.cover),
                     ),
-                  ]
-
-                  // ⭐️ 텍스트 메시지
-                  else ...[
-                    // 말풍선
+                  ] else ...[
+                    if (isMe && message.status == MessageStatus.sending)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: Icon(CupertinoIcons.paperplane, size: 16, color: secondaryColor),
+                      ),
                     Container(
-                      constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.65),
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 12, horizontal: 16),
-                      margin:
-                          EdgeInsets.only(top: isPrevSame ? 2 : 4, bottom: 2),
+                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.65),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      margin: EdgeInsets.only(top: isPrevSame ? 2 : 4, bottom: 2),
                       decoration: BoxDecoration(
                         color: isMe ? _purpleColor : const Color(0xFFEFEFEF),
                         borderRadius: bubbleRadius,
                       ),
                       child: Text(
                         message.text,
-                        style: TextStyle(
-                            color: isMe ? Colors.white : Colors.black,
-                            fontSize: 16),
+                        style: TextStyle(color: isMe ? Colors.white : Colors.black, fontSize: 16),
                       ),
                     ),
-
-                    // ⭐️ 수정됨: 비행기가 말풍선 오른쪽(right)에 뜸
-                    if (isMe && message.status == MessageStatus.sending)
-                      const Padding(
-                        padding: EdgeInsets.only(left: 8, bottom: 4), // 텍스트 오른쪽
-                        child: Icon(CupertinoIcons.paperplane,
-                            size: 16, color: secondaryColor),
-                      ),
                   ],
                 ],
               ),
             ),
-
-            if (showSeen ||
-                (isMe && !isImage && message.text == "Nice to meet you!"))
+            if (showSeen || (isMe && !isImage && message.text == "Nice to meet you!"))
               Padding(
                 padding: const EdgeInsets.only(top: 2, bottom: 8),
-                child: Text(
-                    message.text == "Nice to meet you!"
-                        ? "Seen"
-                        : "Seen just now",
-                    style:
-                        const TextStyle(color: secondaryColor, fontSize: 12)),
+                child: Text(message.text == "Nice to meet you!" ? "Seen" : "Seen just now", style: const TextStyle(color: secondaryColor, fontSize: 12)),
               ),
-
             if (!isMe && index == 0 && _showReactHint)
               const Padding(
                 padding: EdgeInsets.only(left: 40, top: 4, bottom: 8),
-                child: Text("Tap and hold to react",
-                    style: TextStyle(color: secondaryColor, fontSize: 10)),
+                child: Text("Tap and hold to react", style: TextStyle(color: secondaryColor, fontSize: 10)),
               ),
           ],
         ),
@@ -460,18 +391,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               Container(
                 margin: const EdgeInsets.only(left: 4),
                 padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                    color: Colors.white, shape: BoxShape.circle),
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
                 child: Icon(Icons.search, color: _purpleColor, size: 22),
               )
             else
               Container(
                 margin: const EdgeInsets.only(left: 4),
                 padding: const EdgeInsets.all(6),
-                decoration:
-                    BoxDecoration(color: _purpleColor, shape: BoxShape.circle),
-                child: const Icon(CupertinoIcons.camera_fill,
-                    color: Colors.white, size: 20),
+                decoration: BoxDecoration(color: _purpleColor, shape: BoxShape.circle),
+                child: const Icon(CupertinoIcons.camera_fill, color: Colors.white, size: 20),
               ),
             Expanded(
               child: TextField(
@@ -487,44 +415,36 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               ),
             ),
             if (!_isTyping) ...[
-              const Icon(CupertinoIcons.mic_fill,
-                  color: Colors.black87, size: 24),
+              const Icon(CupertinoIcons.mic_fill, color: Colors.black87, size: 24),
               const SizedBox(width: 12),
               GestureDetector(
-                onTap: _openCustomGallery, // ⭐️ 커스텀 갤러리 바로 열기
+                onTap: _openCustomGallery,
                 child: SvgPicture.asset(
                   'assets/icons/Picture.svg',
-                  width: 24,
-                  height: 24,
-                  colorFilter:
-                      const ColorFilter.mode(Colors.black87, BlendMode.srcIn),
+                  width: 24, height: 24,
+                  colorFilter: const ColorFilter.mode(Colors.black87, BlendMode.srcIn),
                 ),
               ),
               const SizedBox(width: 12),
               SvgPicture.asset(
                 'assets/icons/smile_square.svg',
-                width: 24,
-                height: 24,
-                colorFilter:
-                    const ColorFilter.mode(Colors.black87, BlendMode.srcIn),
+                width: 24, height: 24,
+                colorFilter: const ColorFilter.mode(Colors.black87, BlendMode.srcIn),
               ),
               const SizedBox(width: 12),
-              const Icon(CupertinoIcons.plus_circle,
-                  color: Colors.black87, size: 26),
+              const Icon(CupertinoIcons.plus_circle, color: Colors.black87, size: 26),
               const SizedBox(width: 8),
             ] else ...[
               GestureDetector(
                 onTap: _sendMessage,
                 child: Container(
                   margin: const EdgeInsets.only(right: 4),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: _purpleColor,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Icon(CupertinoIcons.paperplane_fill,
-                      color: Colors.white, size: 18),
+                  child: const Icon(CupertinoIcons.paperplane_fill, color: Colors.white, size: 18),
                 ),
               ),
             ],
@@ -535,44 +455,63 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 }
 
-// ⭐️ 커스텀 갤러리 시트 (문자열 경로 전달)
+// ⭐️ 진짜 갤러리 연동 시트 (PhotoManager 사용)
 class CustomGallerySheet extends StatefulWidget {
-  final Function(String) onSendImage;
+  final Function(File) onSendImage;
   const CustomGallerySheet({super.key, required this.onSendImage});
 
   @override
   State<CustomGallerySheet> createState() => _CustomGallerySheetState();
 }
 
-class _CustomGallerySheetState extends State<CustomGallerySheet>
-    with SingleTickerProviderStateMixin {
-  final List<String> _dummyImages = [
-    'assets/images/posts/kid_go/post13_1.jpg',
-    'assets/images/posts/ran/post13_1.jpg',
-    'assets/images/posts/kid_go/post13_2.jpg',
-    'assets/images/profiles/kid_go.png',
-    'assets/images/profiles/ran.png',
-    'assets/images/profiles/conan.png',
-  ];
-
-  int? _selectedIndex;
+class _CustomGallerySheetState extends State<CustomGallerySheet> with SingleTickerProviderStateMixin {
+  List<AssetEntity> _mediaList = []; // ⭐️ 실제 사진 리스트
+  AssetEntity? _selectedEntity; // 선택된 사진
+  
   late AnimationController _tooltipController;
   late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _tooltipController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 300));
-    _scaleAnimation =
-        CurvedAnimation(parent: _tooltipController, curve: Curves.elasticOut);
+    _fetchGallery();
+    _tooltipController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _scaleAnimation = CurvedAnimation(parent: _tooltipController, curve: Curves.elasticOut);
   }
 
-  void _selectImage(int index) {
+  // ⭐️ 갤러리 사진 불러오기 (핵심 로직)
+  _fetchGallery() async {
+    // 권한 요청
+    final PermissionState ps = await PhotoManager.requestPermissionExtend();
+    if (ps.isAuth) {
+      // 앨범 리스트 가져오기
+      List<AssetPathEntity> albums = await PhotoManager.getAssetPathList(type: RequestType.image);
+      if (albums.isNotEmpty) {
+        // 최근 사진 60장 가져오기
+        List<AssetEntity> media = await albums[0].getAssetListPaged(page: 0, size: 60);
+        setState(() {
+          _mediaList = media;
+        });
+      }
+    } else {
+      PhotoManager.openSetting(); // 권한 없으면 설정창으로
+    }
+  }
+
+  void _selectImage(AssetEntity entity) {
     setState(() {
-      _selectedIndex = index;
+      _selectedEntity = entity;
     });
     _tooltipController.forward(from: 0.0);
+  }
+
+  Future<void> _handleSend() async {
+    if (_selectedEntity != null) {
+      File? file = await _selectedEntity!.file; // 실제 파일 변환
+      if (file != null) {
+        widget.onSendImage(file);
+      }
+    }
   }
 
   @override
@@ -591,113 +530,77 @@ class _CustomGallerySheetState extends State<CustomGallerySheet>
       ),
       child: Column(
         children: [
+          // 핸들 & 헤더
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Column(
               children: [
-                Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2))),
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: const [
-                    Text("Recents",
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text("Recents", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     Icon(Icons.keyboard_arrow_down, size: 20),
                   ],
                 ),
               ],
             ),
           ),
+          
+          // ⭐️ 실제 갤러리 그리드
           Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(2),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 2,
-                mainAxisSpacing: 2,
-              ),
-              itemCount: _dummyImages.length,
-              itemBuilder: (context, index) {
-                final isSelected = _selectedIndex == index;
-                return GestureDetector(
-                  onTap: () => _selectImage(index),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.asset(_dummyImages[index], fit: BoxFit.cover),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFF7F3DFF)
-                                : Colors.black.withOpacity(0.3),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 1.5),
+            child: _mediaList.isEmpty 
+              ? const Center(child: CupertinoActivityIndicator()) // 로딩 중
+              : GridView.builder(
+                  padding: const EdgeInsets.all(2),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 2,
+                    mainAxisSpacing: 2,
+                  ),
+                  itemCount: _mediaList.length,
+                  itemBuilder: (context, index) {
+                    final entity = _mediaList[index];
+                    final isSelected = _selectedEntity == entity;
+                    
+                    return GestureDetector(
+                      onTap: () => _selectImage(entity),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // ⭐️ PhotoManager 이미지 위젯
+                          AssetEntityImage(
+                            entity,
+                            isOriginal: false, // 썸네일 사용 (속도 향상)
+                            thumbnailSize: const ThumbnailSize.square(200), 
+                            fit: BoxFit.cover,
                           ),
-                          alignment: Alignment.center,
-                          child: isSelected
-                              ? const Text("1",
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold))
-                              : null,
-                        ),
-                      ),
-
-                      // ⭐️ 수정됨: 툴팁 위치 및 꼬리 방향
-                      if (isSelected)
-                        Positioned(
-                          bottom: 10, right: 10, // 오른쪽 아래에 뜸
-                          child: ScaleTransition(
-                            scale: _scaleAnimation,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                    boxShadow: [
-                                      BoxShadow(
-                                          color: Colors.black26, blurRadius: 4)
-                                    ],
-                                  ),
-                                  child: const Text("Tap to preview and edit",
-                                      style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 12),
-                                  child: CustomPaint(
-                                    painter: TooltipTrianglePainter(), // 아래 꼬리
-                                    size: const Size(10, 6),
-                                  ),
-                                )
-                              ],
+                          // 선택 표시 (보라색 숫자)
+                          Positioned(
+                            top: 8, right: 8,
+                            child: Container(
+                              width: 24, height: 24,
+                              decoration: BoxDecoration(
+                                color: isSelected ? const Color(0xFF7F3DFF) : Colors.black.withOpacity(0.3),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 1.5),
+                              ),
+                              alignment: Alignment.center,
+                              child: isSelected 
+                                  ? const Text("1", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))
+                                  : null,
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
           ),
-          if (_selectedIndex != null)
+
+          // 하단 전송 바
+          if (_selectedEntity != null)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -707,23 +610,57 @@ class _CustomGallerySheetState extends State<CustomGallerySheet>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(_dummyImages[_selectedIndex!],
-                        width: 40, height: 40, fit: BoxFit.cover),
+                  // ⭐️ 왼쪽 미리보기 & 툴팁 (위치 수정됨: 미리보기 위)
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: AssetEntityImage(_selectedEntity!, width: 40, height: 40, fit: BoxFit.cover),
+                      ),
+                      // ⭐️ 툴팁: 왼쪽 아래 (미리보기 위쪽)
+                      Positioned(
+                        bottom: 50, // 이미지 위로 띄움
+                        left: 0,
+                        child: ScaleTransition(
+                          scale: _scaleAnimation,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start, // 왼쪽 정렬
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                                ),
+                                child: const Text("Tap to preview and edit", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              ),
+                              // 꼬리 (왼쪽 아래)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 12), // 왼쪽 여백
+                                child: CustomPaint(
+                                  painter: TooltipTrianglePainter(),
+                                  size: const Size(12, 8),
+                                ),
+                              )
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                  
+                  // 전송 버튼
                   GestureDetector(
-                    onTap: () =>
-                        widget.onSendImage(_dummyImages[_selectedIndex!]),
+                    onTap: _handleSend,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xFF7F3DFF),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Icon(CupertinoIcons.paperplane_fill,
-                          color: Colors.white, size: 20),
+                      child: const Icon(CupertinoIcons.paperplane_fill, color: Colors.white, size: 20),
                     ),
                   ),
                 ],
@@ -735,7 +672,7 @@ class _CustomGallerySheetState extends State<CustomGallerySheet>
   }
 }
 
-// ⭐️ 툴팁 꼬리 (아래쪽 역삼각형)
+// ⭐️ 말풍선 꼬리 그리기 (역삼각형)
 class TooltipTrianglePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -748,7 +685,6 @@ class TooltipTrianglePainter extends CustomPainter {
     canvas.drawShadow(path, Colors.black26, 2.0, false);
     canvas.drawPath(path, paint);
   }
-
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
@@ -764,37 +700,27 @@ class _TypingDotsState extends State<TypingDots> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1000))
-      ..repeat();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat();
   }
-
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 24,
-      height: 10,
+      width: 24, height: 10,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(3, (index) {
           return AnimatedBuilder(
             animation: _controller,
             builder: (context, child) {
-              final double y = -3 *
-                  (0.5 + 0.5 * sin(index * 1.5 + _controller.value * 6.28));
+              final double y = -3 * (0.5 + 0.5 * sin(index * 1.5 + _controller.value * 6.28));
               return Transform.translate(
                 offset: Offset(0, y),
-                child: Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                        color: Colors.grey, shape: BoxShape.circle)),
+                child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle)),
               );
             },
           );
