@@ -35,7 +35,7 @@ class _DmListScreenState extends State<DmListScreen> {
     final myUser = MOCK_USERS['brown']!;
 
     List<Map<String, dynamic>> dmList = [];
-    final targetUsers = ['kid_go', 'ran'];
+    final targetUsers = ['inseong', 'conan'];
 
     for (var userId in targetUsers) {
       final user = MOCK_USERS[userId]!;
