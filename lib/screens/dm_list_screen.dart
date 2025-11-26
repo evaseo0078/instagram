@@ -6,7 +6,7 @@ import 'package:instagram/data/mock_data.dart';
 import 'package:instagram/models/user_model.dart';
 import 'package:instagram/screens/chat_screen.dart';
 import 'package:instagram/utils/colors.dart';
-import 'package:instagram/data/chat_data.dart'; // ⭐️ ChatData import
+import 'package:instagram/data/chat_data.dart';
 import 'package:instagram/models/chat_message.dart';
 
 class DmListScreen extends StatefulWidget {
@@ -17,7 +17,6 @@ class DmListScreen extends StatefulWidget {
 }
 
 class _DmListScreenState extends State<DmListScreen> {
-  // 시간 차이 포맷팅 함수 (1h ago, 3m ago 등)
   String _formatTime(DateTime timestamp) {
     final diff = DateTime.now().difference(timestamp);
     if (diff.inDays > 0) {
@@ -35,32 +34,26 @@ class _DmListScreenState extends State<DmListScreen> {
   Widget build(BuildContext context) {
     final myUser = MOCK_USERS['brown']!;
 
-    // ⭐️ 1. 채팅 데이터 가져오기 & 가공
     List<Map<String, dynamic>> dmList = [];
-
-    // MOCK_USERS 중 ChatData에 데이터가 있는 유저만 찾기
-    // (여기선 kid_go와 ran만 예시로 사용)
-    final targetUsers = ['kid_go', 'ran']; // 화면에 표시할 유저 목록
+    final targetUsers = ['kid_go', 'ran'];
 
     for (var userId in targetUsers) {
       final user = MOCK_USERS[userId]!;
-      // ChatData에서 해당 유저 이름(예: Kaito Kid)으로 메시지 가져옴
-      // MOCK_USERS의 name 속성과 ChatData의 키가 일치해야 함
       final messages = ChatData.getMessages(user.name);
 
       if (messages.isNotEmpty) {
-        final lastMsg = messages.first; // 최신 메시지 (insert(0) 했으므로)
+        final lastMsg = messages.first;
         dmList.add({
           "user": user,
           "lastMessage": lastMsg.text,
           "isSeen": lastMsg.status == MessageStatus.seen,
+          "isSentByMe": lastMsg.isSentByMe, // ⭐️ 누가 보냈는지 확인
           "timestamp": lastMsg.timestamp,
-          "timeString": _formatTime(lastMsg.timestamp), // "1h ago" 등
+          "timeString": _formatTime(lastMsg.timestamp),
         });
       }
     }
 
-    // ⭐️ 2. 시간 순 정렬 (최신이 위로)
     dmList.sort((a, b) => b['timestamp'].compareTo(a['timestamp']));
 
     return Scaffold(
@@ -98,7 +91,6 @@ class _DmListScreenState extends State<DmListScreen> {
       ),
       body: ListView(
         children: [
-          // 검색창
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -119,8 +111,6 @@ class _DmListScreenState extends State<DmListScreen> {
               ),
             ),
           ),
-
-          // Note 섹션 (이전과 동일)
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -175,8 +165,6 @@ class _DmListScreenState extends State<DmListScreen> {
               ],
             ),
           ),
-
-          // Messages 헤더
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -198,24 +186,27 @@ class _DmListScreenState extends State<DmListScreen> {
               ],
             ),
           ),
-
-          // ⭐️ 3. DM 리스트 렌더링
           ...dmList.map((dm) {
             final UserModel user = dm['user'];
             final String lastMessage = dm['lastMessage'];
-            // ⭐️ Sent 시간 표시 (Sent 1h ago 등)
             final String timeString = dm['timeString'];
+            final bool isSentByMe = dm['isSentByMe']; // 내가 보낸건지 확인
+            final bool isSeen = dm['isSeen']; // 상대가 읽었는지(Seen) 확인
 
-            // 메시지 내용이 너무 길면 자르기
-            String subtitleText = lastMessage.length > 20
-                ? "${lastMessage.substring(0, 20)}..."
-                : lastMessage;
+            String subtitleText;
 
-            // 내가 보낸 메시지나 LLM 메시지면 "Sent" 붙이기 (Seen 상태가 아니면)
-            if (!dm['isSeen']) {
-              subtitleText = "$subtitleText · $timeString";
+            // ⭐️ 메시지 상태 로직 수정 (Ran: Seen / Kid: Sent 3m ago)
+            if (isSentByMe) {
+              // 내가 보낸 경우
+              if (isSeen) {
+                subtitleText = "Seen"; // 시간 표시 안 함
+              } else {
+                subtitleText = "Sent $timeString"; // Sent 3m ago
+              }
             } else {
-              subtitleText = "Seen · $timeString";
+              // 상대가 보낸 경우 (메시지 내용 + 시간)
+              subtitleText =
+                  "${lastMessage.length > 20 ? lastMessage.substring(0, 20) + '...' : lastMessage} · $timeString";
             }
 
             return ListTile(
@@ -236,7 +227,6 @@ class _DmListScreenState extends State<DmListScreen> {
               trailing: const Icon(CupertinoIcons.camera,
                   color: secondaryColor, size: 26),
               onTap: () async {
-                // ⭐️ 채팅방 갔다가 돌아오면 화면 갱신 (순서 바뀜 반영)
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -246,13 +236,10 @@ class _DmListScreenState extends State<DmListScreen> {
                     ),
                   ),
                 );
-                // 돌아왔을 때
                 if (mounted) setState(() {});
               },
             );
           }).toList(),
-
-          // 하단 친구 추천 (동일)
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
             child: Text("Find friends to follow and message",

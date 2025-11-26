@@ -1,5 +1,3 @@
-// 📍 lib/screens/chat_screen.dart (전체 덮어쓰기)
-
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
@@ -11,6 +9,7 @@ import 'package:instagram/utils/colors.dart';
 import 'package:intl/intl.dart';
 import 'package:instagram/models/chat_message.dart';
 import 'package:instagram/data/chat_data.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class ChatScreen extends StatefulWidget {
   final String username;
@@ -29,14 +28,13 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final TextEditingController _messageController = TextEditingController();
   late List<ChatMessage> _messages;
-  final ImagePicker _picker = ImagePicker();
   final ScrollController _scrollController = ScrollController();
 
   bool _isTyping = false;
   bool _isLlmTyping = false;
-
-  // ⭐️ 5초 타이머를 위한 상태 변수
   bool _showReactHint = false;
+
+  final Color _purpleColor = const Color(0xFF7F3DFF);
 
   @override
   void initState() {
@@ -61,11 +59,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     if (text.isEmpty) return;
 
     _messageController.clear();
+    setState(() => _showReactHint = false);
 
-    // 내가 메시지를 보내면 힌트는 무조건 사라짐
-    setState(() {
-      _showReactHint = false;
-    });
+    if (widget.username.contains("Ran")) {
+      for (var msg in _messages) {
+        if (msg.status == MessageStatus.seen) {
+          msg.status = MessageStatus.sent;
+        }
+      }
+    }
 
     final newMessage = ChatMessage(
       text: text,
@@ -94,6 +96,46 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     });
   }
 
+  // ⭐️ 수정됨: 시스템 갤러리(_picker)를 호출하지 않고 바로 커스텀 시트를 엽니다.
+  void _openCustomGallery() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => CustomGallerySheet(onSendImage: _sendImageMessage),
+    );
+  }
+
+  // ⭐️ 이미지 메시지 전송
+  // (assets 경로를 받아서 처리하도록 수정됨)
+  void _sendImageMessage(String imagePath) {
+    Navigator.pop(context);
+
+    final newMessage = ChatMessage(
+      text: "",
+      isSentByMe: true,
+      status: MessageStatus.sending,
+      animate: true,
+      timestamp: DateTime.now(),
+      // File 객체에 경로를 담지만, 실제로는 assets 경로임 (UI에서 구분 처리)
+      imageFile: File(imagePath),
+    );
+
+    setState(() {
+      _messages.insert(0, newMessage);
+      _showReactHint = false;
+    });
+
+    Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _isLlmTyping = true;
+        });
+        _getLlmResponse("I sent you a photo.");
+      }
+    });
+  }
+
   Future<void> _getLlmResponse(String text) async {
     try {
       await Future.delayed(const Duration(seconds: 2));
@@ -110,17 +152,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 animate: true,
                 timestamp: DateTime.now(),
               ));
-          // ⭐️ 답변 오면 힌트 보여주기
           _showReactHint = true;
         });
 
-        // ⭐️ 5초 뒤에 힌트 끄기
         Timer(const Duration(seconds: 5), () {
-          if (mounted) {
-            setState(() {
-              _showReactHint = false;
-            });
-          }
+          if (mounted) setState(() => _showReactHint = false);
         });
       }
     } catch (e) {
@@ -178,8 +214,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             child: ListView.builder(
               controller: _scrollController,
               reverse: true,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 8), // 패딩 조정
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               itemCount: _messages.length + (_isLlmTyping ? 1 : 0),
               itemBuilder: (context, index) {
                 if (_isLlmTyping && index == 0) {
@@ -189,7 +224,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 final msgIndex = _isLlmTyping ? index - 1 : index;
                 final message = _messages[msgIndex];
 
-                // 15분 시간 표시 로직
                 bool showTime = false;
                 if (msgIndex == _messages.length - 1) {
                   showTime = true;
@@ -201,23 +235,25 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   if (difference > 15) showTime = true;
                 }
 
-                // ⭐️ 말풍선 그룹화 로직 (위/아래 메시지 확인)
-                // 리스트가 reverse이므로:
-                // index + 1 은 "이전(과거) 메시지" -> 말풍선 위쪽 모양 결정
-                // index - 1 은 "다음(최신) 메시지" -> 말풍선 아래쪽 모양 결정
-
-                // 1. 위쪽 메시지가 나와 같은 사람인가?
                 bool isPrevSame = false;
                 if (msgIndex < _messages.length - 1) {
-                  isPrevSame =
-                      _messages[msgIndex + 1].isSentByMe == message.isSentByMe;
+                  isPrevSame = _messages[msgIndex + 1].isSentByMe ==
+                          message.isSentByMe &&
+                      message.timestamp
+                              .difference(_messages[msgIndex + 1].timestamp)
+                              .inMinutes <
+                          1;
                 }
 
-                // 2. 아래쪽 메시지가 나와 같은 사람인가?
                 bool isNextSame = false;
                 if (msgIndex > 0) {
-                  isNextSame =
-                      _messages[msgIndex - 1].isSentByMe == message.isSentByMe;
+                  isNextSame = _messages[msgIndex - 1].isSentByMe ==
+                          message.isSentByMe &&
+                      _messages[msgIndex - 1]
+                              .timestamp
+                              .difference(message.timestamp)
+                              .inMinutes <
+                          1;
                 }
 
                 return _buildMessageBubble(
@@ -255,25 +291,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Widget _buildMessageBubble(ChatMessage message, int index, bool showTime,
       bool isPrevSame, bool isNextSame) {
     final isMe = message.isSentByMe;
-    final showSeen = isMe && message.status == MessageStatus.seen && index == 0;
+    final isImage = message.imageFile != null;
+
+    final showSeen =
+        isMe && !isImage && message.status == MessageStatus.seen && index == 0;
     String formattedTime =
         "Today ${DateFormat('h:mm a').format(message.timestamp)}";
 
-    // ⭐️ 말풍선 반경 계산 (4px = 뾰족함, 22px = 둥그러움)
-    // 내가 보낸 거면: 오른쪽 위/아래가 변함
-    // 상대가 보낸 거면: 왼쪽 위/아래가 변함
     BorderRadius bubbleRadius;
-
     if (isMe) {
       bubbleRadius = BorderRadius.only(
         topLeft: const Radius.circular(22),
         bottomLeft: const Radius.circular(22),
-        topRight: isPrevSame
-            ? const Radius.circular(4)
-            : const Radius.circular(22), // 위쪽이 같으면 뾰족
-        bottomRight: isNextSame
-            ? const Radius.circular(4)
-            : const Radius.circular(22), // 아래쪽이 같으면 뾰족
+        topRight:
+            isPrevSame ? const Radius.circular(4) : const Radius.circular(22),
+        bottomRight:
+            isNextSame ? const Radius.circular(4) : const Radius.circular(22),
       );
     } else {
       bubbleRadius = BorderRadius.only(
@@ -298,67 +331,98 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           crossAxisAlignment:
               isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
+            // 애니메이션
             TweenAnimationBuilder(
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 400),
               tween: Tween<Offset>(
-                  begin: message.animate ? const Offset(-0.5, 0) : Offset.zero,
+                  begin: message.animate
+                      ? (isImage ? const Offset(0, 1) : const Offset(0.5, 0))
+                      : Offset.zero,
                   end: Offset.zero),
-              curve: Curves.easeOut,
+              curve: Curves.easeOutCubic,
               builder: (context, Offset offset, child) {
                 return Transform.translate(
-                  offset: Offset(offset.dx * 50, 0),
+                  offset: isImage
+                      ? Offset(0, offset.dy * 100)
+                      : Offset(offset.dx * 50, 0),
                   child: child,
                 );
               },
               child: Row(
                 mainAxisAlignment:
                     isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                crossAxisAlignment:
-                    CrossAxisAlignment.end, // 아래쪽 정렬 (프로필 사진 위치 때문)
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   if (!isMe) ...[
-                    // ⭐️ 상대방 프로필은 그룹의 맨 마지막(가장 아래) 메시지에만 표시하거나, 항상 표시하되 투명하게 처리
-                    // 여기서는 심플하게 '다음 메시지가 다른 사람이거나 없을 때'만 표시
                     if (!isNextSame)
                       CircleAvatar(
                           radius: 14,
                           backgroundImage: AssetImage(widget.profilePicAsset))
                     else
-                      const SizedBox(width: 28), // 프로필 공간 확보
-
+                      const SizedBox(width: 28),
                     const SizedBox(width: 8),
                   ],
-                  Container(
-                    constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width * 0.65),
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 16),
-                    // ⭐️ 말풍선 간격: 그룹 내부는 2, 그룹 간은 4
-                    margin: EdgeInsets.only(top: isPrevSame ? 2 : 4, bottom: 2),
-                    decoration: BoxDecoration(
-                      // ⭐️ 보라색 적용 (0xFF7F3DFF)
-                      color: isMe
-                          ? const Color(0xFF7F3DFF)
-                          : const Color(0xFFEFEFEF),
-                      borderRadius: bubbleRadius, // 계산된 모양 적용
+
+                  // ⭐️ 이미지 메시지
+                  if (isImage) ...[
+                    if (isMe)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                              color: Colors.grey[300], shape: BoxShape.circle),
+                          child: const Icon(CupertinoIcons.paperplane_fill,
+                              size: 16, color: Colors.white),
+                        ),
+                      ),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      // ⭐️ assets 경로 처리
+                      child: message.imageFile!.path.startsWith('assets/')
+                          ? Image.asset(message.imageFile!.path,
+                              width: 220, fit: BoxFit.cover)
+                          : Image.file(message.imageFile!,
+                              width: 220, fit: BoxFit.cover),
                     ),
-                    child: Text(
-                      message.text,
-                      style: TextStyle(
-                          color: isMe ? Colors.white : Colors.black,
-                          fontSize: 16),
+                  ]
+
+                  // ⭐️ 텍스트 메시지
+                  else ...[
+                    // 말풍선
+                    Container(
+                      constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.65),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 16),
+                      margin:
+                          EdgeInsets.only(top: isPrevSame ? 2 : 4, bottom: 2),
+                      decoration: BoxDecoration(
+                        color: isMe ? _purpleColor : const Color(0xFFEFEFEF),
+                        borderRadius: bubbleRadius,
+                      ),
+                      child: Text(
+                        message.text,
+                        style: TextStyle(
+                            color: isMe ? Colors.white : Colors.black,
+                            fontSize: 16),
+                      ),
                     ),
-                  ),
-                  if (isMe && message.status == MessageStatus.sending)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 8, bottom: 12),
-                      child: Icon(CupertinoIcons.paperplane,
-                          size: 16, color: secondaryColor),
-                    ),
+
+                    // ⭐️ 수정됨: 비행기가 말풍선 오른쪽(right)에 뜸
+                    if (isMe && message.status == MessageStatus.sending)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 8, bottom: 4), // 텍스트 오른쪽
+                        child: Icon(CupertinoIcons.paperplane,
+                            size: 16, color: secondaryColor),
+                      ),
+                  ],
                 ],
               ),
             ),
-            if (showSeen || (isMe && message.text == "Nice to meet you!"))
+
+            if (showSeen ||
+                (isMe && !isImage && message.text == "Nice to meet you!"))
               Padding(
                 padding: const EdgeInsets.only(top: 2, bottom: 8),
                 child: Text(
@@ -369,7 +433,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         const TextStyle(color: secondaryColor, fontSize: 12)),
               ),
 
-            // ⭐️ 5초 타이머 & 최신 메시지 조건
             if (!isMe && index == 0 && _showReactHint)
               const Padding(
                 padding: EdgeInsets.only(left: 40, top: 4, bottom: 8),
@@ -384,70 +447,310 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   Widget _buildInputArea() {
     return Container(
-      padding: const EdgeInsets.only(left: 8, right: 8, bottom: 12, top: 8),
-      child: Row(
-        children: [
-          if (_isTyping)
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                  color: Color(0xFF7F3DFF), shape: BoxShape.circle), // 보라색
-              child: const Icon(Icons.search, color: Colors.white, size: 24),
-            )
-          else
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                  color: Color(0xFF7F3DFF), shape: BoxShape.circle), // 보라색
-              child: const Icon(CupertinoIcons.camera_fill,
-                  color: Colors.white, size: 22),
-            ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                  color: const Color(0xFFEFEFEF),
-                  borderRadius: BorderRadius.circular(24)),
+      padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12, top: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEFEFEF),
+          borderRadius: BorderRadius.circular(26),
+        ),
+        child: Row(
+          children: [
+            if (_isTyping)
+              Container(
+                margin: const EdgeInsets.only(left: 4),
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                    color: Colors.white, shape: BoxShape.circle),
+                child: Icon(Icons.search, color: _purpleColor, size: 22),
+              )
+            else
+              Container(
+                margin: const EdgeInsets.only(left: 4),
+                padding: const EdgeInsets.all(6),
+                decoration:
+                    BoxDecoration(color: _purpleColor, shape: BoxShape.circle),
+                child: const Icon(CupertinoIcons.camera_fill,
+                    color: Colors.white, size: 20),
+              ),
+            Expanded(
               child: TextField(
                 controller: _messageController,
                 decoration: const InputDecoration(
-                    hintText: 'Message...',
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 12)),
+                  hintText: 'Message...',
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                  isDense: true,
+                ),
+                style: const TextStyle(fontSize: 16),
                 onSubmitted: (_) => _sendMessage(),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          if (_isTyping)
-            GestureDetector(
-              onTap: _sendMessage,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.0),
-                child: Text("Send",
-                    style: TextStyle(
-                        color: Color(0xFF7F3DFF),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16)), // 보라색 텍스트
+            if (!_isTyping) ...[
+              const Icon(CupertinoIcons.mic_fill,
+                  color: Colors.black87, size: 24),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: _openCustomGallery, // ⭐️ 커스텀 갤러리 바로 열기
+                child: SvgPicture.asset(
+                  'assets/icons/Picture.svg',
+                  width: 24,
+                  height: 24,
+                  colorFilter:
+                      const ColorFilter.mode(Colors.black87, BlendMode.srcIn),
+                ),
               ),
-            )
-          else
-            Row(
-              children: const [
-                Icon(CupertinoIcons.mic, size: 26),
-                SizedBox(width: 8),
-                Icon(CupertinoIcons.photo, size: 26),
-                SizedBox(width: 8),
-                Icon(CupertinoIcons.smiley, size: 26),
-                SizedBox(width: 8),
-                Icon(CupertinoIcons.add_circled, size: 26),
+              const SizedBox(width: 12),
+              SvgPicture.asset(
+                'assets/icons/smile_square.svg',
+                width: 24,
+                height: 24,
+                colorFilter:
+                    const ColorFilter.mode(Colors.black87, BlendMode.srcIn),
+              ),
+              const SizedBox(width: 12),
+              const Icon(CupertinoIcons.plus_circle,
+                  color: Colors.black87, size: 26),
+              const SizedBox(width: 8),
+            ] else ...[
+              GestureDetector(
+                onTap: _sendMessage,
+                child: Container(
+                  margin: const EdgeInsets.only(right: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _purpleColor,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(CupertinoIcons.paperplane_fill,
+                      color: Colors.white, size: 18),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ⭐️ 커스텀 갤러리 시트 (문자열 경로 전달)
+class CustomGallerySheet extends StatefulWidget {
+  final Function(String) onSendImage;
+  const CustomGallerySheet({super.key, required this.onSendImage});
+
+  @override
+  State<CustomGallerySheet> createState() => _CustomGallerySheetState();
+}
+
+class _CustomGallerySheetState extends State<CustomGallerySheet>
+    with SingleTickerProviderStateMixin {
+  final List<String> _dummyImages = [
+    'assets/images/posts/kid_go/post13_1.jpg',
+    'assets/images/posts/ran/post13_1.jpg',
+    'assets/images/posts/kid_go/post13_2.jpg',
+    'assets/images/profiles/kid_go.png',
+    'assets/images/profiles/ran.png',
+    'assets/images/profiles/conan.png',
+  ];
+
+  int? _selectedIndex;
+  late AnimationController _tooltipController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _tooltipController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 300));
+    _scaleAnimation =
+        CurvedAnimation(parent: _tooltipController, curve: Curves.elasticOut);
+  }
+
+  void _selectImage(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    _tooltipController.forward(from: 0.0);
+  }
+
+  @override
+  void dispose() {
+    _tooltipController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.6,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              children: [
+                Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2))),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Text("Recents",
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    Icon(Icons.keyboard_arrow_down, size: 20),
+                  ],
+                ),
               ],
+            ),
+          ),
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.all(2),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 2,
+                mainAxisSpacing: 2,
+              ),
+              itemCount: _dummyImages.length,
+              itemBuilder: (context, index) {
+                final isSelected = _selectedIndex == index;
+                return GestureDetector(
+                  onTap: () => _selectImage(index),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(_dummyImages[index], fit: BoxFit.cover),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFF7F3DFF)
+                                : Colors.black.withOpacity(0.3),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          alignment: Alignment.center,
+                          child: isSelected
+                              ? const Text("1",
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold))
+                              : null,
+                        ),
+                      ),
+
+                      // ⭐️ 수정됨: 툴팁 위치 및 꼬리 방향
+                      if (isSelected)
+                        Positioned(
+                          bottom: 10, right: 10, // 오른쪽 아래에 뜸
+                          child: ScaleTransition(
+                            scale: _scaleAnimation,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(
+                                          color: Colors.black26, blurRadius: 4)
+                                    ],
+                                  ),
+                                  child: const Text("Tap to preview and edit",
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold)),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 12),
+                                  child: CustomPaint(
+                                    painter: TooltipTrianglePainter(), // 아래 꼬리
+                                    size: const Size(10, 6),
+                                  ),
+                                )
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          if (_selectedIndex != null)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(top: BorderSide(color: Colors.grey[200]!)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(_dummyImages[_selectedIndex!],
+                        width: 40, height: 40, fit: BoxFit.cover),
+                  ),
+                  GestureDetector(
+                    onTap: () =>
+                        widget.onSendImage(_dummyImages[_selectedIndex!]),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7F3DFF),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(CupertinoIcons.paperplane_fill,
+                          color: Colors.white, size: 20),
+                    ),
+                  ),
+                ],
+              ),
             ),
         ],
       ),
     );
   }
+}
+
+// ⭐️ 툴팁 꼬리 (아래쪽 역삼각형)
+class TooltipTrianglePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white;
+    final path = Path();
+    path.moveTo(0, 0);
+    path.lineTo(size.width, 0);
+    path.lineTo(size.width / 2, size.height);
+    path.close();
+    canvas.drawShadow(path, Colors.black26, 2.0, false);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class TypingDots extends StatefulWidget {
