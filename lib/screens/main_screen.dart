@@ -1,8 +1,11 @@
+// 📍 lib/screens/main_screen.dart (전체 덮어쓰기)
+
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:instagram/data/mock_data.dart'; // Mock Data & Scenario
-import 'package:instagram/models/feed_item.dart'; // ⭐️ FeedItem 추가 (피드 갱신용)
-import 'package:instagram/models/post_model.dart'; // Model
+import 'package:instagram/data/mock_data.dart';
+import 'package:instagram/models/feed_item.dart';
+import 'package:instagram/models/post_model.dart';
 import 'package:instagram/screens/add_post_screen.dart';
 import 'package:instagram/screens/edit_filter_screen.dart';
 import 'package:instagram/screens/gallery_picker_screen.dart';
@@ -21,42 +24,53 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-
-  // ⭐️ 로그인한 유저: 브라운 박사님 ('brown')
   final myUser = MOCK_USERS['brown']!;
 
-  // ⭐️ 게시물 작성 완료 시 호출되는 함수
   void _addPost(File image, String caption) {
     setState(() {
-      // 1. 새로운 PostModel 생성
+      // 1. 새 게시물
       final newPost = PostModel(
         username: myUser.username,
         userProfilePicAsset: myUser.profilePicAsset,
-        images: [image.path], // File 경로를 저장
+        images: [image.path],
         caption: caption,
         comments: [],
         likes: 0,
         date: DateTime.now(),
       );
 
-      // 2. 내 프로필 데이터(posts)에 추가 (최신글이 맨 앞)
+      // 2. 데이터 추가
       myUser.posts.insert(0, newPost);
-
-      // 3. ⭐️ [중요] 홈 피드 시나리오에도 추가해야 홈 화면에 뜸!
       HOME_FEED_SCENARIO.insert(
-        0, // 맨 위에 추가
-        FeedItem(type: FeedItemType.post, post: newPost),
-      );
+          0, FeedItem(type: FeedItemType.post, post: newPost));
 
-      // 4. 홈 탭(0)으로 이동해서 확인
+      // 3. 홈으로 이동
       _selectedIndex = 0;
+
+      // ⭐️ 4. [자동 댓글] 5초 뒤 Conan
+      Timer(const Duration(seconds: 5), () {
+        if (mounted) {
+          setState(() {
+            newPost.likes++;
+            newPost.comments.add({
+              "username": "conan",
+              "comment": "Wow! Awesome photo! 🔥",
+              "time": "Just now",
+              "isLiked": false,
+            });
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('conan commented: "Wow! Awesome photo! 🔥"'),
+                duration: Duration(seconds: 2)),
+          );
+        }
+      });
     });
   }
 
-  // 탭 선택 처리
   void _onTabTapped(int index) async {
     if (index == 2) {
-      // [Add 탭] 갤러리 -> 필터 -> 작성 -> 업로드 흐름
       final File? originalFile = await Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const GalleryPickerScreen()),
@@ -77,7 +91,6 @@ class _MainScreenState extends State<MainScreen> {
                 builder: (context) => AddPostScreen(imageFile: filteredFile)),
           );
 
-          // 작성이 완료되면 _addPost 호출
           if (caption != null) {
             _addPost(filteredFile, caption);
           }
@@ -96,11 +109,11 @@ class _MainScreenState extends State<MainScreen> {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          const HomeScreen(), // 0: 홈 (시나리오 + 새 글)
-          const SearchScreen(), // 1: 검색
-          Container(), // 2: 추가 (로직은 위에서 처리됨)
-          const ReelsScreen(), // 3: 릴스
-          // ⭐️ 4: 내 프로필 (kid_go가 아니라 myUser(brown) 전달)
+          const HomeScreen(),
+          const SearchScreen(),
+          Container(),
+          const ReelsScreen(),
+          // 내 프로필 전달
           ProfileScreen(user: myUser, isMyProfile: true),
         ],
       ),

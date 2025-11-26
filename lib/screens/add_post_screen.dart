@@ -1,9 +1,12 @@
-import 'dart:io'; // ⭐️ 1. 파일(File)을 다루기 위해 필요
-import 'package:flutter/material.dart';
+// 📍 lib/screens/add_post_screen.dart (전체 덮어쓰기)
 
-// 갤러리에서 선택한 이미지를 받아오는 "캡션 작성 화면"
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:instagram/utils/colors.dart'; // backgroundColor, primaryColor 사용
+import 'package:instagram/data/mock_data.dart'; // 내 정보 가져오기
+
 class AddPostScreen extends StatefulWidget {
-  final File imageFile; // ⭐️ 2. 선택된 이미지 파일을 전달받음
+  final File imageFile;
 
   const AddPostScreen({super.key, required this.imageFile});
 
@@ -22,20 +25,27 @@ class _AddPostScreenState extends State<AddPostScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 내 정보 (brown) 가져오기
+    final myUser = MOCK_USERS['brown']!;
+
     return Scaffold(
+      backgroundColor: backgroundColor,
       appBar: AppBar(
+        backgroundColor: backgroundColor,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          // ⭐️ 3. 뒤로가기 버튼
+          icon: const Icon(Icons.arrow_back, color: primaryColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('New post'),
-        centerTitle: false,
+        title: const Text(
+          'New post',
+          style: TextStyle(
+              color: primaryColor, fontWeight: FontWeight.bold, fontSize: 16),
+        ),
         actions: [
-          // ⭐️ 4. "Share" (공유) 버튼
           TextButton(
             onPressed: () {
-              // ⭐️ 5. "Share" 누르면 캡션 내용을 가지고 "돌아감"
+              // 작성 내용 반환
               Navigator.of(context).pop(_captionController.text);
             },
             child: const Text(
@@ -46,40 +56,66 @@ class _AddPostScreenState extends State<AddPostScreen> {
                 fontSize: 16,
               ),
             ),
-          )
+          ),
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           children: [
+            const SizedBox(height: 10),
+            // ⭐️ 상단: 이미지 썸네일 + 캡션 입력창
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start, // 위쪽 정렬
               children: [
-                // ⭐️ 6. 선택된 이미지 미리보기
-                Image.file(
-                  widget.imageFile,
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
+                // 1. 선택된 이미지 썸네일 (영상처럼 작게)
+                SizedBox(
+                  width: 70,
+                  height: 70,
+                  child: Image.file(
+                    widget.imageFile,
+                    fit: BoxFit.cover, // 꽉 채우기
+                  ),
                 ),
-                const SizedBox(width: 16),
-                // ⭐️ 7. 캡션 입력창
+                const SizedBox(width: 12),
+
+                // 2. 캡션 입력창
                 Expanded(
                   child: TextField(
                     controller: _captionController,
-                    maxLines: 3,
+                    maxLines: null, // 줄바꿈 자유롭게
                     decoration: const InputDecoration(
-                      hintText: 'Write a caption...', // 영상 2:01
+                      hintText: 'Write a caption...',
                       border: InputBorder.none,
+                      hintStyle: TextStyle(color: Colors.grey),
                     ),
+                    style: const TextStyle(fontSize: 16),
                   ),
                 ),
               ],
             ),
-            const Divider(),
+            const Divider(height: 30, thickness: 0.5),
+
+            // 3. (옵션) 추가 메뉴들 (영상 디테일)
+            _buildOptionRow('Tag people'),
+            _buildOptionRow('Add location'),
+            _buildOptionRow('Add music'),
           ],
         ),
+      ),
+    );
+  }
+
+  // 메뉴 한 줄 만드는 함수
+  Widget _buildOptionRow(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 16)),
+          const Icon(Icons.chevron_right, color: Colors.grey),
+        ],
       ),
     );
   }

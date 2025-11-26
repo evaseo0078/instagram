@@ -1,13 +1,19 @@
 // 📍 lib/screens/profile_screen.dart (전체 덮어쓰기)
 
+import 'dart:async'; // 타이머 사용
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:instagram/models/feed_item.dart';
 import 'package:instagram/models/post_model.dart';
 import 'package:instagram/models/user_model.dart';
+import 'package:instagram/screens/add_post_screen.dart';
+import 'package:instagram/screens/edit_filter_screen.dart';
+import 'package:instagram/screens/gallery_picker_screen.dart';
 import 'package:instagram/screens/edit_profile_screen.dart';
 import 'package:instagram/screens/following_list_screen.dart';
 import 'package:instagram/utils/colors.dart';
-import 'package:instagram/data/mock_data.dart'; // ⭐️ 데이터 접근
+import 'package:instagram/data/mock_data.dart';
+import 'package:instagram/screens/profile_feed_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -29,7 +35,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // 팔로우 상태 확인
     final myUser = MOCK_USERS['brown']!;
     _isFollowing = myUser.followingUsernames.contains(widget.user.username);
   }
@@ -46,6 +51,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
         myUser.followingUsernames.remove(widget.user.username);
       }
     });
+  }
+
+  // ⭐️ 사진 업로드 시작 (프로필 화면에서 바로 추가)
+  Future<void> _startUploadProcess() async {
+    final File? originalFile = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const GalleryPickerScreen()),
+    );
+
+    if (originalFile != null) {
+      if (!mounted) return;
+      final File? filteredFile = await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => EditFilterScreen(imageFile: originalFile)),
+      );
+
+      if (filteredFile != null && mounted) {
+        final String? caption = await Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => AddPostScreen(imageFile: filteredFile)),
+        );
+
+        if (caption != null && mounted) {
+          setState(() {
+            // 1. 새 게시물 생성
+            final newPost = PostModel(
+              username: widget.user.username,
+              userProfilePicAsset: widget.user.profilePicAsset,
+              images: [filteredFile.path],
+              caption: caption,
+              comments: [],
+              likes: 0,
+              date: DateTime.now(),
+            );
+
+            // 2. 내 게시물 리스트 맨 앞에 추가
+            widget.user.posts.insert(0, newPost);
+
+            // 3. 홈 피드 시나리오에도 추가
+            HOME_FEED_SCENARIO.insert(
+                0, FeedItem(type: FeedItemType.post, post: newPost));
+
+            // ⭐️ 4. [자동 댓글] 5초 뒤 Conan 등장
+            Timer(const Duration(seconds: 5), () {
+              if (mounted) {
+                setState(() {
+                  newPost.likes++;
+                  newPost.comments.add({
+                    "username": "conan",
+                    "comment": "Wow! Awesome photo! 🔥",
+                    "time": "Just now",
+                    "isLiked": false,
+                  });
+                });
+              }
+            });
+          });
+        }
+      }
+    }
   }
 
   Future<void> _navigateToEditProfile() async {
@@ -81,7 +148,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ⭐️ 타입 명시 (List<PostModel>)
     final List<PostModel> myPosts = widget.user.posts;
 
     return Scaffold(
@@ -102,7 +168,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (widget.isMyProfile) ...[
             IconButton(
                 icon: const Icon(Icons.add_box_outlined, color: primaryColor),
-                onPressed: () {}),
+                onPressed: _startUploadProcess),
             IconButton(
                 icon: const Icon(Icons.menu, color: primaryColor),
                 onPressed: () {}),
@@ -121,27 +187,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 프로필 사진 및 팔로잉 정보
+                        // 프로필 상단 정보
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            CircleAvatar(
-                              radius: 40,
-                              backgroundColor: Colors.grey[300],
-                              backgroundImage: widget.user.profilePicAsset
-                                      .startsWith('assets/')
-                                  ? AssetImage(widget.user.profilePicAsset)
-                                      as ImageProvider
-                                  : FileImage(
-                                      File(widget.user.profilePicAsset)),
+                            Column(
+                              children: [
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Text("Share a\nnote",
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(fontSize: 10)),
+                                ),
+                                Stack(
+                                  alignment: Alignment.bottomRight,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 40,
+                                      backgroundColor: Colors.grey[300],
+                                      backgroundImage: widget
+                                              .user.profilePicAsset
+                                              .startsWith('assets/')
+                                          ? AssetImage(
+                                                  widget.user.profilePicAsset)
+                                              as ImageProvider
+                                          : FileImage(File(
+                                              widget.user.profilePicAsset)),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: const BoxDecoration(
+                                          color: backgroundColor,
+                                          shape: BoxShape.circle),
+                                      child: const Icon(Icons.add_circle,
+                                          color: Colors.black, size: 24),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                            // 팔로워/팔로잉 스탯 (간략화)
                             Row(
                               children: [
-                                _buildStatColumn('${myPosts.length}', 'Posts'),
+                                _buildStatColumn('${myPosts.length}', 'posts'),
                                 const SizedBox(width: 20),
                                 _buildStatColumn('${widget.user.followerCount}',
-                                    'Followers'),
+                                    'followers'),
                                 const SizedBox(width: 20),
                                 GestureDetector(
                                     onTap: () {
@@ -156,7 +252,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     },
                                     child: _buildStatColumn(
                                         '${widget.user.followingUsernames.length}',
-                                        'Following')),
+                                        'following')),
                               ],
                             ),
                           ],
@@ -168,49 +264,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 4),
                         Text(widget.user.bio),
                         const SizedBox(height: 16),
-
-                        // ⭐️ 팔로우 / 편집 버튼
-                        SizedBox(
-                          width: double.infinity,
-                          child: widget.isMyProfile
-                              ? OutlinedButton(
-                                  onPressed: _navigateToEditProfile,
-                                  style: OutlinedButton.styleFrom(
-                                    side: BorderSide(color: Colors.grey[400]!),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8)),
-                                  ),
-                                  child: const Text('Edit profile',
-                                      style: TextStyle(color: primaryColor)),
-                                )
-                              : _isFollowing
-                                  ? OutlinedButton(
-                                      onPressed: _toggleFollow,
-                                      style: OutlinedButton.styleFrom(
-                                        backgroundColor: Colors.grey[200],
-                                        side: BorderSide.none,
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8)),
-                                      ),
-                                      child: const Text('Following',
-                                          style: TextStyle(
-                                              color: primaryColor,
-                                              fontWeight: FontWeight.bold)),
-                                    )
-                                  : ElevatedButton(
-                                      onPressed: _toggleFollow,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.blue,
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8)),
-                                      ),
-                                      child: const Text('Follow',
-                                          style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold)),
-                                    ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: widget.isMyProfile
+                                    ? _navigateToEditProfile
+                                    : _toggleFollow,
+                                style: OutlinedButton.styleFrom(
+                                  backgroundColor:
+                                      widget.isMyProfile || _isFollowing
+                                          ? Colors.grey[200]
+                                          : Colors.blue,
+                                  side: BorderSide.none,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 0),
+                                ),
+                                child: Text(
+                                  widget.isMyProfile
+                                      ? 'Edit profile'
+                                      : (_isFollowing ? 'Following' : 'Follow'),
+                                  style: TextStyle(
+                                      color:
+                                          (widget.isMyProfile || _isFollowing)
+                                              ? primaryColor
+                                              : Colors.white,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () {},
+                                style: OutlinedButton.styleFrom(
+                                  backgroundColor: Colors.grey[200],
+                                  side: BorderSide.none,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                ),
+                                child: const Text('Share profile',
+                                    style: TextStyle(
+                                        color: primaryColor,
+                                        fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.person_add_outlined,
+                                  size: 20),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -223,7 +334,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const TabBar(
                     tabs: [
                       Tab(icon: Icon(Icons.grid_on)),
-                      Tab(icon: Icon(Icons.movie_creation_outlined)),
+                      Tab(icon: Icon(Icons.person_pin_outlined)),
                     ],
                     indicatorColor: primaryColor,
                     labelColor: primaryColor,
@@ -236,7 +347,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           body: TabBarView(
             children: [
               _buildPostGrid(myPosts),
-              const Center(child: Text("No Reels yet")),
+              const Center(child: Text("No tagged posts")),
             ],
           ),
         ),
@@ -255,7 +366,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildPostGrid(List<PostModel> posts) {
-    if (posts.isEmpty) return const Center(child: Text("No posts yet"));
+    final int itemCount = widget.isMyProfile ? posts.length + 1 : posts.length;
+
     return GridView.builder(
       padding: EdgeInsets.zero,
       physics: const NeverScrollableScrollPhysics(),
@@ -264,18 +376,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
         crossAxisSpacing: 1.5,
         mainAxisSpacing: 1.5,
       ),
-      itemCount: posts.length,
+      itemCount: itemCount,
       itemBuilder: (context, index) {
-        final post = posts[index];
+        // 1. 내 프로필 업로드 버튼 (+)
+        if (widget.isMyProfile && index == 0) {
+          return GestureDetector(
+            onTap: _startUploadProcess,
+            child: Container(
+              color: Colors.grey[100],
+              child: const Icon(Icons.add, size: 40, color: Colors.grey),
+            ),
+          );
+        }
+
+        // 2. 실제 게시물 인덱스 계산
+        // 내 프로필이면 +버튼 때문에 index가 1 밀려있으므로 -1 해줌
+        final int postIndex = widget.isMyProfile ? index - 1 : index;
+        final post = posts[postIndex];
         final imagePath = post.images.isNotEmpty ? post.images[0] : '';
 
-        if (imagePath.isEmpty) return Container(color: Colors.grey);
-        if (imagePath.startsWith('assets/')) {
-          return Image.asset(imagePath, fit: BoxFit.cover);
-        }
-        return Image.file(File(imagePath), fit: BoxFit.cover);
+        // ⭐️ 3. 사진 클릭 시 피드 화면으로 이동 (연동 핵심)
+        return GestureDetector(
+          onTap: () async {
+            // 피드 화면으로 이동
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProfileFeedScreen(
+                  posts: posts, // 전체 리스트 공유
+                  initialIndex: postIndex, // 클릭한 사진 위치
+                  username: widget.user.username,
+                ),
+              ),
+            );
+            // ⭐️ 돌아왔을 때 좋아요/댓글 변경사항 반영을 위해 화면 갱신
+            if (mounted) setState(() {});
+          },
+          child: _buildGridImage(imagePath),
+        );
       },
     );
+  }
+
+  Widget _buildGridImage(String imagePath) {
+    if (imagePath.isEmpty) return Container(color: Colors.grey);
+    if (imagePath.startsWith('assets/')) {
+      return Image.asset(imagePath, fit: BoxFit.cover);
+    }
+    return Image.file(File(imagePath), fit: BoxFit.cover);
   }
 }
 
