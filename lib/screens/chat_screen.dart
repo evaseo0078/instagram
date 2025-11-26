@@ -9,7 +9,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:instagram/services/llm_service.dart';
 import 'package:instagram/utils/colors.dart';
 import 'package:intl/intl.dart';
-// ⭐️ 새로 만든 파일들 import
 import 'package:instagram/models/chat_message.dart';
 import 'package:instagram/data/chat_data.dart';
 
@@ -29,19 +28,20 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final TextEditingController _messageController = TextEditingController();
-  late List<ChatMessage> _messages; // ⭐️ 로컬 변수가 아니라 ChatData 참조 변수
+  late List<ChatMessage> _messages;
   final ImagePicker _picker = ImagePicker();
   final ScrollController _scrollController = ScrollController();
 
   bool _isTyping = false;
   bool _isLlmTyping = false;
 
+  // ⭐️ 5초 타이머를 위한 상태 변수
+  bool _showReactHint = false;
+
   @override
   void initState() {
     super.initState();
-    // ⭐️ ChatData에서 이 유저와의 대화 기록을 가져옴 (참조)
     _messages = ChatData.getMessages(widget.username);
-
     _messageController.addListener(() {
       setState(() {
         _isTyping = _messageController.text.isNotEmpty;
@@ -62,6 +62,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
     _messageController.clear();
 
+    // 내가 메시지를 보내면 힌트는 무조건 사라짐
+    setState(() {
+      _showReactHint = false;
+    });
+
     final newMessage = ChatMessage(
       text: text,
       isSentByMe: true,
@@ -71,7 +76,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
 
     setState(() {
-      // ⭐️ _messages에 추가하면 ChatData에도 자동으로 추가됨 (참조이므로)
       _messages.insert(0, newMessage);
     });
 
@@ -106,6 +110,17 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 animate: true,
                 timestamp: DateTime.now(),
               ));
+          // ⭐️ 답변 오면 힌트 보여주기
+          _showReactHint = true;
+        });
+
+        // ⭐️ 5초 뒤에 힌트 끄기
+        Timer(const Duration(seconds: 5), () {
+          if (mounted) {
+            setState(() {
+              _showReactHint = false;
+            });
+          }
         });
       }
     } catch (e) {
@@ -163,7 +178,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             child: ListView.builder(
               controller: _scrollController,
               reverse: true,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 8), // 패딩 조정
               itemCount: _messages.length + (_isLlmTyping ? 1 : 0),
               itemBuilder: (context, index) {
                 if (_isLlmTyping && index == 0) {
@@ -185,7 +201,27 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   if (difference > 15) showTime = true;
                 }
 
-                return _buildMessageBubble(message, msgIndex, showTime);
+                // ⭐️ 말풍선 그룹화 로직 (위/아래 메시지 확인)
+                // 리스트가 reverse이므로:
+                // index + 1 은 "이전(과거) 메시지" -> 말풍선 위쪽 모양 결정
+                // index - 1 은 "다음(최신) 메시지" -> 말풍선 아래쪽 모양 결정
+
+                // 1. 위쪽 메시지가 나와 같은 사람인가?
+                bool isPrevSame = false;
+                if (msgIndex < _messages.length - 1) {
+                  isPrevSame =
+                      _messages[msgIndex + 1].isSentByMe == message.isSentByMe;
+                }
+
+                // 2. 아래쪽 메시지가 나와 같은 사람인가?
+                bool isNextSame = false;
+                if (msgIndex > 0) {
+                  isNextSame =
+                      _messages[msgIndex - 1].isSentByMe == message.isSentByMe;
+                }
+
+                return _buildMessageBubble(
+                    message, msgIndex, showTime, isPrevSame, isNextSame);
               },
             ),
           ),
@@ -194,9 +230,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       ),
     );
   }
-
-  // ... (나머지 _buildTypingIndicator, _buildMessageBubble, _buildInputArea, TypingDots 클래스는
-  //      이전 코드와 **완벽히 동일**하므로 그대로 두시면 됩니다!)
 
   Widget _buildTypingIndicator() {
     return Padding(
@@ -219,19 +252,38 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message, int index, bool showTime) {
+  Widget _buildMessageBubble(ChatMessage message, int index, bool showTime,
+      bool isPrevSame, bool isNextSame) {
     final isMe = message.isSentByMe;
     final showSeen = isMe && message.status == MessageStatus.seen && index == 0;
+    String formattedTime =
+        "Today ${DateFormat('h:mm a').format(message.timestamp)}";
 
-    // 날짜 포맷: 오늘이면 시간만, 아니면 날짜+시간
-    String formattedTime;
-    final now = DateTime.now();
-    if (message.timestamp.day == now.day &&
-        message.timestamp.month == now.month &&
-        message.timestamp.year == now.year) {
-      formattedTime = "Today ${DateFormat('h:mm a').format(message.timestamp)}";
+    // ⭐️ 말풍선 반경 계산 (4px = 뾰족함, 22px = 둥그러움)
+    // 내가 보낸 거면: 오른쪽 위/아래가 변함
+    // 상대가 보낸 거면: 왼쪽 위/아래가 변함
+    BorderRadius bubbleRadius;
+
+    if (isMe) {
+      bubbleRadius = BorderRadius.only(
+        topLeft: const Radius.circular(22),
+        bottomLeft: const Radius.circular(22),
+        topRight: isPrevSame
+            ? const Radius.circular(4)
+            : const Radius.circular(22), // 위쪽이 같으면 뾰족
+        bottomRight: isNextSame
+            ? const Radius.circular(4)
+            : const Radius.circular(22), // 아래쪽이 같으면 뾰족
+      );
     } else {
-      formattedTime = DateFormat('MMM d, h:mm a').format(message.timestamp);
+      bubbleRadius = BorderRadius.only(
+        topRight: const Radius.circular(22),
+        bottomRight: const Radius.circular(22),
+        topLeft:
+            isPrevSame ? const Radius.circular(4) : const Radius.circular(22),
+        bottomLeft:
+            isNextSame ? const Radius.circular(4) : const Radius.circular(22),
+      );
     }
 
     return Column(
@@ -261,12 +313,19 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               child: Row(
                 mainAxisAlignment:
                     isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment:
+                    CrossAxisAlignment.end, // 아래쪽 정렬 (프로필 사진 위치 때문)
                 children: [
                   if (!isMe) ...[
-                    CircleAvatar(
-                        radius: 14,
-                        backgroundImage: AssetImage(widget.profilePicAsset)),
+                    // ⭐️ 상대방 프로필은 그룹의 맨 마지막(가장 아래) 메시지에만 표시하거나, 항상 표시하되 투명하게 처리
+                    // 여기서는 심플하게 '다음 메시지가 다른 사람이거나 없을 때'만 표시
+                    if (!isNextSame)
+                      CircleAvatar(
+                          radius: 14,
+                          backgroundImage: AssetImage(widget.profilePicAsset))
+                    else
+                      const SizedBox(width: 28), // 프로필 공간 확보
+
                     const SizedBox(width: 8),
                   ],
                   Container(
@@ -274,12 +333,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         maxWidth: MediaQuery.of(context).size.width * 0.65),
                     padding: const EdgeInsets.symmetric(
                         vertical: 12, horizontal: 16),
-                    margin: const EdgeInsets.symmetric(vertical: 2),
+                    // ⭐️ 말풍선 간격: 그룹 내부는 2, 그룹 간은 4
+                    margin: EdgeInsets.only(top: isPrevSame ? 2 : 4, bottom: 2),
                     decoration: BoxDecoration(
+                      // ⭐️ 보라색 적용 (0xFF7F3DFF)
                       color: isMe
-                          ? const Color(0xFF3797EF)
+                          ? const Color(0xFF7F3DFF)
                           : const Color(0xFFEFEFEF),
-                      borderRadius: BorderRadius.circular(22),
+                      borderRadius: bubbleRadius, // 계산된 모양 적용
                     ),
                     child: Text(
                       message.text,
@@ -290,7 +351,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   ),
                   if (isMe && message.status == MessageStatus.sending)
                     const Padding(
-                      padding: EdgeInsets.only(left: 8),
+                      padding: EdgeInsets.only(left: 8, bottom: 12),
                       child: Icon(CupertinoIcons.paperplane,
                           size: 16, color: secondaryColor),
                     ),
@@ -307,7 +368,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     style:
                         const TextStyle(color: secondaryColor, fontSize: 12)),
               ),
-            if (!isMe && index == 0)
+
+            // ⭐️ 5초 타이머 & 최신 메시지 조건
+            if (!isMe && index == 0 && _showReactHint)
               const Padding(
                 padding: EdgeInsets.only(left: 40, top: 4, bottom: 8),
                 child: Text("Tap and hold to react",
@@ -328,14 +391,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: const BoxDecoration(
-                  color: Color(0xFF3797EF), shape: BoxShape.circle),
+                  color: Color(0xFF7F3DFF), shape: BoxShape.circle), // 보라색
               child: const Icon(Icons.search, color: Colors.white, size: 24),
             )
           else
             Container(
               padding: const EdgeInsets.all(8),
               decoration: const BoxDecoration(
-                  color: Color(0xFF3797EF), shape: BoxShape.circle),
+                  color: Color(0xFF7F3DFF), shape: BoxShape.circle), // 보라색
               child: const Icon(CupertinoIcons.camera_fill,
                   color: Colors.white, size: 22),
             ),
@@ -364,9 +427,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 padding: EdgeInsets.symmetric(horizontal: 8.0),
                 child: Text("Send",
                     style: TextStyle(
-                        color: Colors.blue,
+                        color: Color(0xFF7F3DFF),
                         fontWeight: FontWeight.bold,
-                        fontSize: 16)),
+                        fontSize: 16)), // 보라색 텍스트
               ),
             )
           else
