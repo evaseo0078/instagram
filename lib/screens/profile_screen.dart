@@ -35,6 +35,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    // ⭐️ 데이터 초기화: 내 프로필인 경우 mock_data의 값을 확인
+    // (mock_data.dart에서 이미 username='ph.brown', name='Agasa'로 설정되어 있다고 가정)
     final myUser = MOCK_USERS['brown']!;
     _isFollowing = myUser.followingUsernames.contains(widget.user.username);
   }
@@ -53,7 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  // ⭐️ 사진 업로드 시작 프로세스
+  // ⭐️ 사진 업로드 프로세스
   Future<void> _startUploadProcess() async {
     final File? originalFile = await Navigator.push(
       context,
@@ -110,6 +112,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // ⭐️ 프로필 수정 화면 이동
   Future<void> _navigateToEditProfile() async {
     if (!widget.isMyProfile) return;
 
@@ -118,6 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       currentProfilePicFile = File(widget.user.profilePicAsset);
     }
 
+    // EditProfileScreen으로 현재 데이터 전달
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -129,6 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
 
+    // ⭐️ 수정된 데이터 받아와서 업데이트 (연동)
     if (result != null && result is Map<String, dynamic>) {
       setState(() {
         widget.user.name = result['name'];
@@ -145,15 +150,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final List<PostModel> myPosts = widget.user.posts;
 
-    // ⭐️ 요청사항 반영: 이름과 아이디 강제 변경 (화면 표시용)
-    // 실제 데이터가 변경되려면 mock_data.dart를 수정해야 하지만,
-    // 일단 화면상에서 요구사항대로 보이도록 처리합니다.
-    final String displayUsername =
-        widget.isMyProfile ? "ph.brown" : widget.user.username;
-    final String displayName = widget.isMyProfile ? "Agasa" : widget.user.name;
-    final String displayBio = widget.isMyProfile
-        ? "I'm gonna be the God of Flutter!"
-        : widget.user.bio;
+    // ⭐️ 1. 하드코딩 제거하고 실제 widget.user 데이터 사용
+    // (mock_data에서 ph.brown, Agasa 등으로 설정되어 있어야 함)
+    final String displayUsername = widget.user.username;
+    final String displayName = widget.user.name;
+    final String displayBio = widget.user.bio;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -165,28 +166,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 icon: const Icon(Icons.arrow_back, color: primaryColor),
                 onPressed: () => Navigator.of(context).pop(),
               ),
-        // ⭐️ AppBar 타이틀: 아이디 + 아래 화살표
         title: Row(
-          mainAxisSize: MainAxisSize.min, // 텍스트 길이만큼만 차지하게
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // ⭐️ 자물쇠 아이콘이 필요한 경우 여기에 추가 (사진엔 없어서 제외)
             Text(
-              displayUsername,
+              displayUsername, // "ph.brown"
               style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 22, // 글씨 크기 약간 키움
+                  fontSize: 22,
                   color: primaryColor),
             ),
             if (widget.isMyProfile) ...[
               const SizedBox(width: 4),
-              // ⭐️ 아래 화살표 추가 (약간 작게)
               const Icon(Icons.keyboard_arrow_down,
                   size: 18, color: primaryColor),
-              // ⭐️ 붉은 점(알림)이 필요하다면 여기에 Positioned Stack 추가 가능
             ]
           ],
         ),
-        centerTitle: false, // 왼쪽 정렬
+        centerTitle: false,
         actions: [
           if (widget.isMyProfile) ...[
             IconButton(
@@ -208,26 +205,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Column(
+                      // ⭐️ 2. 전체 내용을 왼쪽 정렬
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 10),
-                        // ⭐️ 프로필 상단 정보 (사진 + 스탯)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // ⭐️ 아바타 + 말풍선 Stack
+                            // 아바타 + 말풍선 Stack
                             Stack(
-                              clipBehavior: Clip.none, // 말풍선이 밖으로 나가도 잘리지 않게
+                              clipBehavior: Clip.none,
                               children: [
-                                // 1. 아바타
+                                // 아바타
                                 Container(
-                                  margin: const EdgeInsets.only(
-                                      top: 12), // 말풍선 공간 확보
+                                  margin: const EdgeInsets.only(top: 12),
                                   child: Stack(
                                     alignment: Alignment.bottomRight,
                                     children: [
                                       CircleAvatar(
-                                        radius: 42, // 크기 살짝 키움
+                                        radius: 42,
                                         backgroundColor: Colors.grey[300],
                                         backgroundImage: widget
                                                 .user.profilePicAsset
@@ -238,7 +234,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             : FileImage(File(
                                                 widget.user.profilePicAsset)),
                                       ),
-                                      // ⭐️ 아바타 우측 하단 (+) 버튼
                                       if (widget.isMyProfile)
                                         Container(
                                           padding: const EdgeInsets.all(2),
@@ -248,7 +243,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           ),
                                           child: const Icon(
                                             Icons.add_circle,
-                                            color: Colors.black, // 검정색 (+)
+                                            color: Colors.black,
                                             size: 24,
                                           ),
                                         ),
@@ -256,16 +251,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                 ),
 
-                                // ⭐️ 2. 말풍선 ("Share a note") - 위치 조정
+                                // ⭐️ 3. 말풍선 꼬리 위치 조정 (왼쪽으로 이동)
                                 if (widget.isMyProfile)
                                   Positioned(
-                                    top: -10, // 아바타보다 더 위로
-                                    left: -10, // 약간 왼쪽으로
+                                    top: -10,
+                                    left: -10,
                                     child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start, // 꼬리 왼쪽 정렬
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        // 말풍선 본체
                                         Container(
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 10, vertical: 6),
@@ -291,10 +285,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                 height: 1.1),
                                           ),
                                         ),
-                                        // 말풍선 꼬리 (삼각형)
+                                        // ⭐️ 꼬리 여백을 12.0으로 줄여서 왼쪽으로 이동시킴
                                         Padding(
                                           padding:
-                                              const EdgeInsets.only(left: 30.0),
+                                              const EdgeInsets.only(left: 12.0),
                                           child: CustomPaint(
                                             size: const Size(10, 8),
                                             painter: NoteTrianglePainter(),
@@ -306,7 +300,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ],
                             ),
 
-                            // 스탯 (게시물, 팔로워, 팔로잉)
+                            // ⭐️ 4. 스탯 (Posts, Followers, Following) - 실제 데이터 연동
                             Expanded(
                               child: Row(
                                 mainAxisAlignment:
@@ -339,16 +333,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
 
                         const SizedBox(height: 12),
-                        // ⭐️ 이름 (Agasa)
+                        // ⭐️ 5. 이름 (Agasa) - 왼쪽 정렬됨
                         Text(displayName,
                             style:
                                 const TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
-                        // ⭐️ 소개글 (God of Flutter)
+                        // 소개글
                         Text(displayBio),
                         const SizedBox(height: 16),
 
-                        // ⭐️ 버튼들 (Edit profile, Share profile)
+                        // 버튼들
                         Row(
                           children: [
                             Expanded(
@@ -371,9 +365,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            // ⭐️ 사람 추가 아이콘 버튼 (작은 네모)
                             Container(
-                              height: 32, // 다른 버튼 높이와 맞춤
+                              height: 32,
                               width: 34,
                               decoration: BoxDecoration(
                                 color: Colors.grey[200],
@@ -391,20 +384,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ]),
               ),
 
-              // ⭐️ 탭바 섹션 (Sticky)
+              // 탭바
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _SliverAppBarDelegate(
                   TabBar(
-                    // ⭐️ 중요: 탭바 밑줄이 꽉 차게 나오도록 설정
                     indicatorSize: TabBarIndicatorSize.tab,
-                    indicatorColor: primaryColor, // 검정색
-                    indicatorWeight: 1.5, // 두께
+                    indicatorColor: primaryColor,
+                    indicatorWeight: 1.5,
                     labelColor: primaryColor,
-                    unselectedLabelColor: Colors.grey, // 선택 안된건 회색
+                    unselectedLabelColor: Colors.grey,
                     tabs: const [
-                      Tab(icon: Icon(Icons.grid_on)), // 그리드 아이콘
-                      Tab(icon: Icon(Icons.person_pin_outlined)), // 태그 아이콘
+                      Tab(icon: Icon(Icons.grid_on)),
+                      Tab(icon: Icon(Icons.person_pin_outlined)),
                     ],
                   ),
                 ),
@@ -424,21 +416,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ⭐️ 공통 버튼 스타일 빌더
   Widget _buildProfileButton({
     required String text,
     required bool isBlue,
     required VoidCallback onTap,
   }) {
     return SizedBox(
-      height: 32, // 버튼 높이 고정
+      height: 32,
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
           backgroundColor: isBlue ? Colors.blue : Colors.grey[200],
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          padding: EdgeInsets.zero, // 내부 패딩 제거
+          padding: EdgeInsets.zero,
         ),
         child: Text(
           text,
@@ -452,9 +443,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ⭐️ 6. 숫자와 라벨을 왼쪽 정렬 (CrossAxisAlignment.start)
   Widget _buildStatColumn(String count, String label) {
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start, // 왼쪽 정렬
       children: [
         Text(count,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -464,13 +457,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildPostGrid(List<PostModel> posts) {
-    // ⭐️ 내 프로필이면 1개(플러스버튼) + 게시글 2개(mock_data 기준)
-    // mock_data.dart의 brown 계정 게시글 개수를 확인해야 함.
-    // 사진상으로는 게시글 2개 + 플러스 버튼이 보임.
     final int itemCount = widget.isMyProfile ? posts.length + 1 : posts.length;
 
     return GridView.builder(
-      padding: EdgeInsets.zero, // 패딩 제거해서 딱 붙게
+      padding: EdgeInsets.zero,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
@@ -479,29 +469,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       itemCount: itemCount,
       itemBuilder: (context, index) {
-        // ⭐️ 마지막 아이템(혹은 원하는 위치)을 '+' 버튼으로 배치
-        // 사진상 순서는: [사진1] [사진2] [+] (빈공간)
-        // 하지만 인스타는 최신순이므로 [사진New] ... 그리고 보통 '+'는 별도 영역이거나 맨 앞일 수 있음.
-        // 여기서는 "사진과 똑같이" 구현하기 위해 맨 뒤나 맨 앞에 배치를 조정해야 함.
-        // 일반적인 인스타 로직 대신 사진의 배치를 따르자면:
-        // 현재 코드 로직: index 0을 [+]로 만듦. -> [+][사진1][사진2] 순서가 됨.
-        // 사진상: [사진1][사진2][+] 순서임.
-
         if (widget.isMyProfile) {
-          // 게시물이 2개라고 가정하면:
-          // index 0 -> post 0
-          // index 1 -> post 1
-          // index 2 -> Plus button
+          // 사진 업로드 버튼을 마지막에 배치 (혹은 요구사항에 따라 위치 변경 가능)
+          // 여기서는 인덱스 0을 'Newest Post'로 취급하므로, 업로드 버튼을 인덱스 마지막에 둠
           if (index == posts.length) {
             return GestureDetector(
               onTap: _startUploadProcess,
               child: Container(
-                color: Colors.grey[50], // 아주 연한 회색
+                color: Colors.grey[50],
                 child: const Icon(Icons.add, size: 36, color: Colors.black54),
               ),
             );
           }
-          // 게시물 렌더링
           final post = posts[index];
           final imagePath = post.images.isNotEmpty ? post.images[0] : '';
           return GestureDetector(
@@ -522,7 +501,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
 
-        // 남의 프로필일 때
+        // 남의 프로필
         final post = posts[index];
         final imagePath = post.images.isNotEmpty ? post.images[0] : '';
         return GestureDetector(
@@ -554,7 +533,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// ⭐️ 말풍선 꼬리 그리기 (삼각형)
 class NoteTrianglePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -562,19 +540,17 @@ class NoteTrianglePainter extends CustomPainter {
       ..color = Colors.white
       ..style = PaintingStyle.fill;
 
-    // 그림자 효과 (선택사항)
     final shadowPaint = Paint()
       ..color = Colors.black.withOpacity(0.1)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
 
     final path = Path();
-    // 역삼각형 모양
-    path.moveTo(0, 0); // 왼쪽 위
-    path.lineTo(size.width, 0); // 오른쪽 위
-    path.lineTo(size.width / 2, size.height); // 중간 아래
+    path.moveTo(0, 0);
+    path.lineTo(size.width, 0);
+    path.lineTo(size.width / 2, size.height);
     path.close();
 
-    canvas.drawPath(path, shadowPaint); // 그림자 먼저
+    canvas.drawPath(path, shadowPaint);
     canvas.drawPath(path, paint);
   }
 
@@ -582,7 +558,6 @@ class NoteTrianglePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// ⭐️ 탭바 배경 및 고정 처리
 class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar _tabBar;
   _SliverAppBarDelegate(this._tabBar);
@@ -596,11 +571,9 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: backgroundColor, // 배경 흰색
+      color: backgroundColor,
       child: Column(
         children: [
-          // ⭐️ 탭바 위쪽 구분선 (사진처럼 보이게)
-          // Divider(height: 1, color: Colors.grey[300]),
           Expanded(child: _tabBar),
         ],
       ),
