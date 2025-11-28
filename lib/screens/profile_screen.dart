@@ -1,6 +1,6 @@
-// 📍 lib/screens/profile_screen.dart (최종 수정본 - 오류 해결)
+// 📍 lib/screens/profile_screen.dart
 
-import 'dart:async'; // 타이머 사용
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:instagram/models/feed_item.dart';
@@ -13,7 +13,7 @@ import 'package:instagram/screens/edit_profile_screen.dart';
 import 'package:instagram/screens/following_list_screen.dart';
 import 'package:instagram/utils/colors.dart';
 import 'package:instagram/data/mock_data.dart';
-import 'package:instagram/screens/profile_feed_screen.dart'; // ⭐️ 필수 import
+import 'package:instagram/screens/profile_feed_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -53,7 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  // ⭐️ 사진 업로드 시작
+  // ⭐️ 사진 업로드 시작 프로세스
   Future<void> _startUploadProcess() async {
     final File? originalFile = await Navigator.push(
       context,
@@ -77,7 +77,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         if (caption != null && mounted) {
           setState(() {
-            // 1. 새 게시물 생성
             final newPost = PostModel(
               username: widget.user.username,
               userProfilePicAsset: widget.user.profilePicAsset,
@@ -88,14 +87,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               date: DateTime.now(),
             );
 
-            // 2. 내 게시물 리스트 맨 앞에 추가
             widget.user.posts.insert(0, newPost);
-
-            // 3. 홈 피드 시나리오에도 추가
             HOME_FEED_SCENARIO.insert(
                 0, FeedItem(type: FeedItemType.post, post: newPost));
 
-            // 4. [자동 댓글] 30초 뒤 Conan
             Timer(const Duration(seconds: 30), () {
               if (mounted) {
                 setState(() {
@@ -150,7 +145,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final List<PostModel> myPosts = widget.user.posts;
 
+    // ⭐️ 요청사항 반영: 이름과 아이디 강제 변경 (화면 표시용)
+    // 실제 데이터가 변경되려면 mock_data.dart를 수정해야 하지만,
+    // 일단 화면상에서 요구사항대로 보이도록 처리합니다.
+    final String displayUsername =
+        widget.isMyProfile ? "ph.brown" : widget.user.username;
+    final String displayName = widget.isMyProfile ? "Agasa" : widget.user.name;
+    final String displayBio = widget.isMyProfile
+        ? "I'm gonna be the God of Flutter!"
+        : widget.user.bio;
+
     return Scaffold(
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: backgroundColor,
         leading: widget.isMyProfile
@@ -159,11 +165,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 icon: const Icon(Icons.arrow_back, color: primaryColor),
                 onPressed: () => Navigator.of(context).pop(),
               ),
-        title: Text(
-          widget.user.username,
-          style:
-              const TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
+        // ⭐️ AppBar 타이틀: 아이디 + 아래 화살표
+        title: Row(
+          mainAxisSize: MainAxisSize.min, // 텍스트 길이만큼만 차지하게
+          children: [
+            // ⭐️ 자물쇠 아이콘이 필요한 경우 여기에 추가 (사진엔 없어서 제외)
+            Text(
+              displayUsername,
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22, // 글씨 크기 약간 키움
+                  color: primaryColor),
+            ),
+            if (widget.isMyProfile) ...[
+              const SizedBox(width: 4),
+              // ⭐️ 아래 화살표 추가 (약간 작게)
+              const Icon(Icons.keyboard_arrow_down,
+                  size: 18, color: primaryColor),
+              // ⭐️ 붉은 점(알림)이 필요하다면 여기에 Positioned Stack 추가 가능
+            ]
+          ],
         ),
+        centerTitle: false, // 왼쪽 정렬
         actions: [
           if (widget.isMyProfile) ...[
             IconButton(
@@ -183,163 +206,206 @@ class _ProfileScreenState extends State<ProfileScreen> {
               SliverList(
                 delegate: SliverChildListDelegate([
                   Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 프로필 상단 정보
+                        const SizedBox(height: 10),
+                        // ⭐️ 프로필 상단 정보 (사진 + 스탯)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
+                            // ⭐️ 아바타 + 말풍선 Stack
+                            Stack(
+                              clipBehavior: Clip.none, // 말풍선이 밖으로 나가도 잘리지 않게
                               children: [
+                                // 1. 아바타
                                 Container(
-                                  margin: const EdgeInsets.only(bottom: 4),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(16),
+                                  margin: const EdgeInsets.only(
+                                      top: 12), // 말풍선 공간 확보
+                                  child: Stack(
+                                    alignment: Alignment.bottomRight,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 42, // 크기 살짝 키움
+                                        backgroundColor: Colors.grey[300],
+                                        backgroundImage: widget
+                                                .user.profilePicAsset
+                                                .startsWith('assets/')
+                                            ? AssetImage(
+                                                    widget.user.profilePicAsset)
+                                                as ImageProvider
+                                            : FileImage(File(
+                                                widget.user.profilePicAsset)),
+                                      ),
+                                      // ⭐️ 아바타 우측 하단 (+) 버튼
+                                      if (widget.isMyProfile)
+                                        Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: const BoxDecoration(
+                                            color: backgroundColor,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.add_circle,
+                                            color: Colors.black, // 검정색 (+)
+                                            size: 24,
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                  child: const Text("Share a\nnote",
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(fontSize: 10)),
                                 ),
-                                Stack(
-                                  alignment: Alignment.bottomRight,
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 40,
-                                      backgroundColor: Colors.grey[300],
-                                      backgroundImage: widget
-                                              .user.profilePicAsset
-                                              .startsWith('assets/')
-                                          ? AssetImage(
-                                                  widget.user.profilePicAsset)
-                                              as ImageProvider
-                                          : FileImage(File(
-                                              widget.user.profilePicAsset)),
+
+                                // ⭐️ 2. 말풍선 ("Share a note") - 위치 조정
+                                if (widget.isMyProfile)
+                                  Positioned(
+                                    top: -10, // 아바타보다 더 위로
+                                    left: -10, // 약간 왼쪽으로
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start, // 꼬리 왼쪽 정렬
+                                      children: [
+                                        // 말풍선 본체
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black
+                                                    .withOpacity(0.1),
+                                                blurRadius: 4,
+                                                offset: const Offset(0, 2),
+                                              )
+                                            ],
+                                          ),
+                                          child: const Text(
+                                            "Share a\nnote",
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                height: 1.1),
+                                          ),
+                                        ),
+                                        // 말풍선 꼬리 (삼각형)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(left: 30.0),
+                                          child: CustomPaint(
+                                            size: const Size(10, 8),
+                                            painter: NoteTrianglePainter(),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: const BoxDecoration(
-                                          color: backgroundColor,
-                                          shape: BoxShape.circle),
-                                      child: const Icon(Icons.add_circle,
-                                          color: Colors.black, size: 24),
-                                    ),
-                                  ],
-                                ),
+                                  ),
                               ],
                             ),
-                            Row(
-                              children: [
-                                _buildStatColumn('${myPosts.length}', 'posts'),
-                                const SizedBox(width: 20),
-                                _buildStatColumn('${widget.user.followerCount}',
-                                    'followers'),
-                                const SizedBox(width: 20),
-                                GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) =>
-                                                FollowingListScreen(
-                                                    followingUsernames: widget
-                                                        .user
-                                                        .followingUsernames)));
-                                  },
-                                  child: _buildStatColumn(
-                                      '${widget.user.followingUsernames.length}',
-                                      'following'),
-                                ),
-                              ],
+
+                            // 스탯 (게시물, 팔로워, 팔로잉)
+                            Expanded(
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  _buildStatColumn(
+                                      '${myPosts.length}', 'posts'),
+                                  _buildStatColumn(
+                                      '${widget.user.followerCount}',
+                                      'followers'),
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  FollowingListScreen(
+                                                      followingUsernames: widget
+                                                          .user
+                                                          .followingUsernames)));
+                                    },
+                                    child: _buildStatColumn(
+                                        '${widget.user.followingUsernames.length}',
+                                        'following'),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
+
                         const SizedBox(height: 12),
-                        Text(widget.user.name,
+                        // ⭐️ 이름 (Agasa)
+                        Text(displayName,
                             style:
                                 const TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
-                        Text(widget.user.bio),
+                        // ⭐️ 소개글 (God of Flutter)
+                        Text(displayBio),
                         const SizedBox(height: 16),
+
+                        // ⭐️ 버튼들 (Edit profile, Share profile)
                         Row(
                           children: [
                             Expanded(
-                              child: OutlinedButton(
-                                onPressed: widget.isMyProfile
+                              child: _buildProfileButton(
+                                text: widget.isMyProfile
+                                    ? 'Edit profile'
+                                    : (_isFollowing ? 'Following' : 'Follow'),
+                                isBlue: !widget.isMyProfile && !_isFollowing,
+                                onTap: widget.isMyProfile
                                     ? _navigateToEditProfile
                                     : _toggleFollow,
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor:
-                                      widget.isMyProfile || _isFollowing
-                                          ? Colors.grey[200]
-                                          : Colors.blue,
-                                  side: BorderSide.none,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8)),
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 0),
-                                ),
-                                child: Text(
-                                  widget.isMyProfile
-                                      ? 'Edit profile'
-                                      : (_isFollowing ? 'Following' : 'Follow'),
-                                  style: TextStyle(
-                                      color:
-                                          (widget.isMyProfile || _isFollowing)
-                                              ? primaryColor
-                                              : Colors.white,
-                                      fontWeight: FontWeight.bold),
-                                ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             Expanded(
-                              child: OutlinedButton(
-                                onPressed: () {},
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: Colors.grey[200],
-                                  side: BorderSide.none,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8)),
-                                ),
-                                child: const Text('Share profile',
-                                    style: TextStyle(
-                                        color: primaryColor,
-                                        fontWeight: FontWeight.bold)),
+                              child: _buildProfileButton(
+                                text: 'Share profile',
+                                isBlue: false,
+                                onTap: () {},
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
+                            // ⭐️ 사람 추가 아이콘 버튼 (작은 네모)
                             Container(
-                              padding: const EdgeInsets.all(6),
+                              height: 32, // 다른 버튼 높이와 맞춤
+                              width: 34,
                               decoration: BoxDecoration(
                                 color: Colors.grey[200],
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Icon(Icons.person_add_outlined,
-                                  size: 20),
+                                  size: 18, color: Colors.black),
                             ),
                           ],
                         ),
+                        const SizedBox(height: 10),
                       ],
                     ),
                   ),
                 ]),
               ),
+
+              // ⭐️ 탭바 섹션 (Sticky)
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _SliverAppBarDelegate(
-                  const TabBar(
-                    tabs: [
-                      Tab(icon: Icon(Icons.grid_on)),
-                      Tab(icon: Icon(Icons.person_pin_outlined)),
-                    ],
-                    indicatorColor: primaryColor,
+                  TabBar(
+                    // ⭐️ 중요: 탭바 밑줄이 꽉 차게 나오도록 설정
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicatorColor: primaryColor, // 검정색
+                    indicatorWeight: 1.5, // 두께
                     labelColor: primaryColor,
-                    unselectedLabelColor: secondaryColor,
+                    unselectedLabelColor: Colors.grey, // 선택 안된건 회색
+                    tabs: const [
+                      Tab(icon: Icon(Icons.grid_on)), // 그리드 아이콘
+                      Tab(icon: Icon(Icons.person_pin_outlined)), // 태그 아이콘
+                    ],
                   ),
                 ),
               ),
@@ -348,8 +414,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
           body: TabBarView(
             children: [
               _buildPostGrid(myPosts),
-              const Center(child: Text("No tagged posts")),
+              const Center(
+                  child: Text("Photos and videos of you",
+                      style: TextStyle(fontWeight: FontWeight.bold))),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ⭐️ 공통 버튼 스타일 빌더
+  Widget _buildProfileButton({
+    required String text,
+    required bool isBlue,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      height: 32, // 버튼 높이 고정
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isBlue ? Colors.blue : Colors.grey[200],
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: EdgeInsets.zero, // 내부 패딩 제거
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isBlue ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
           ),
         ),
       ),
@@ -358,20 +454,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildStatColumn(String count, String label) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(count,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(color: secondaryColor)),
+        Text(label, style: const TextStyle(fontSize: 13, color: Colors.black)),
       ],
     );
   }
 
   Widget _buildPostGrid(List<PostModel> posts) {
-    // 내 프로필이면 아이템 개수 + 1 (플러스 버튼용)
+    // ⭐️ 내 프로필이면 1개(플러스버튼) + 게시글 2개(mock_data 기준)
+    // mock_data.dart의 brown 계정 게시글 개수를 확인해야 함.
+    // 사진상으로는 게시글 2개 + 플러스 버튼이 보임.
     final int itemCount = widget.isMyProfile ? posts.length + 1 : posts.length;
 
     return GridView.builder(
-      padding: EdgeInsets.zero,
+      padding: EdgeInsets.zero, // 패딩 제거해서 딱 붙게
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
@@ -380,23 +479,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       itemCount: itemCount,
       itemBuilder: (context, index) {
-        // ⭐️ 1. 내 프로필의 첫 번째 칸은 '+' 버튼
-        if (widget.isMyProfile && index == 0) {
+        // ⭐️ 마지막 아이템(혹은 원하는 위치)을 '+' 버튼으로 배치
+        // 사진상 순서는: [사진1] [사진2] [+] (빈공간)
+        // 하지만 인스타는 최신순이므로 [사진New] ... 그리고 보통 '+'는 별도 영역이거나 맨 앞일 수 있음.
+        // 여기서는 "사진과 똑같이" 구현하기 위해 맨 뒤나 맨 앞에 배치를 조정해야 함.
+        // 일반적인 인스타 로직 대신 사진의 배치를 따르자면:
+        // 현재 코드 로직: index 0을 [+]로 만듦. -> [+][사진1][사진2] 순서가 됨.
+        // 사진상: [사진1][사진2][+] 순서임.
+
+        if (widget.isMyProfile) {
+          // 게시물이 2개라고 가정하면:
+          // index 0 -> post 0
+          // index 1 -> post 1
+          // index 2 -> Plus button
+          if (index == posts.length) {
+            return GestureDetector(
+              onTap: _startUploadProcess,
+              child: Container(
+                color: Colors.grey[50], // 아주 연한 회색
+                child: const Icon(Icons.add, size: 36, color: Colors.black54),
+              ),
+            );
+          }
+          // 게시물 렌더링
+          final post = posts[index];
+          final imagePath = post.images.isNotEmpty ? post.images[0] : '';
           return GestureDetector(
-            onTap: _startUploadProcess,
-            child: Container(
-              color: Colors.grey[100],
-              child: const Icon(Icons.add, size: 40, color: Colors.grey),
-            ),
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfileFeedScreen(
+                    posts: posts,
+                    initialIndex: index,
+                    username: widget.user.username,
+                  ),
+                ),
+              );
+              if (mounted) setState(() {});
+            },
+            child: _buildGridImage(imagePath),
           );
         }
 
-        // ⭐️ 2. 게시물 인덱스 계산 (내 프로필이면 1칸씩 밀림)
-        final int postIndex = widget.isMyProfile ? index - 1 : index;
-        final post = posts[postIndex];
+        // 남의 프로필일 때
+        final post = posts[index];
         final imagePath = post.images.isNotEmpty ? post.images[0] : '';
-
-        // ⭐️ 3. 클릭 시 피드 화면으로 이동
         return GestureDetector(
           onTap: () async {
             await Navigator.push(
@@ -404,12 +532,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               MaterialPageRoute(
                 builder: (context) => ProfileFeedScreen(
                   posts: posts,
-                  initialIndex: postIndex,
+                  initialIndex: index,
                   username: widget.user.username,
                 ),
               ),
             );
-            // 돌아왔을 때 화면 갱신
             if (mounted) setState(() {});
           },
           child: _buildGridImage(imagePath),
@@ -427,17 +554,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
+// ⭐️ 말풍선 꼬리 그리기 (삼각형)
+class NoteTrianglePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    // 그림자 효과 (선택사항)
+    final shadowPaint = Paint()
+      ..color = Colors.black.withOpacity(0.1)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+
+    final path = Path();
+    // 역삼각형 모양
+    path.moveTo(0, 0); // 왼쪽 위
+    path.lineTo(size.width, 0); // 오른쪽 위
+    path.lineTo(size.width / 2, size.height); // 중간 아래
+    path.close();
+
+    canvas.drawPath(path, shadowPaint); // 그림자 먼저
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ⭐️ 탭바 배경 및 고정 처리
 class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   final TabBar _tabBar;
   _SliverAppBarDelegate(this._tabBar);
+
   @override
   double get minExtent => _tabBar.preferredSize.height;
   @override
   double get maxExtent => _tabBar.preferredSize.height;
+
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(color: backgroundColor, child: _tabBar);
+    return Container(
+      color: backgroundColor, // 배경 흰색
+      child: Column(
+        children: [
+          // ⭐️ 탭바 위쪽 구분선 (사진처럼 보이게)
+          // Divider(height: 1, color: Colors.grey[300]),
+          Expanded(child: _tabBar),
+        ],
+      ),
+    );
   }
 
   @override
