@@ -30,7 +30,7 @@ final Map<String, UserModel> MOCK_USERS = {
   // 1. 브라운 박사님 (폴더명: my_posts)
   'brown': UserModel(
     username: 'ph.brown',
-    name: 'Dr. Agasa',
+    name: 'Agasa',
     bio: 'Genius Inventor 💡 | Camping ⛺️',
     profilePicAsset: 'assets/images/profiles/my_profile.png',
     followerCount: 1024,
