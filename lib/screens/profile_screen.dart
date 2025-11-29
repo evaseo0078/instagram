@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:instagram/models/post_model.dart';
 import 'package:instagram/models/user_model.dart';
+import 'package:instagram/models/feed_item.dart';
 import 'package:instagram/screens/edit_filter_screen.dart';
 import 'package:instagram/screens/gallery_picker_screen.dart';
 import 'package:instagram/screens/edit_profile_screen.dart';
@@ -220,11 +221,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         date: DateTime.now(),
       );
 
+      print(
+          '🟢🟢🟢 Before insert - HOME_FEED_SCENARIO length: ${HOME_FEED_SCENARIO.length}');
+
       setState(() {
         myUser.posts.insert(0, newPost);
+
+        // 홈 피드에도 추가 (맨 위에 표시)
+        HOME_FEED_SCENARIO.insert(
+            0,
+            FeedItem(
+              type: FeedItemType.post,
+              post: newPost,
+            ));
+
+        print(
+            '🟢🟢🟢 After insert - HOME_FEED_SCENARIO length: ${HOME_FEED_SCENARIO.length}');
       });
 
-      print('🟢🟢🟢 Post added successfully');
+      print('🟢🟢🟢 Post added successfully and added to home feed');
 
       // Pause 메시지 시트 표시 후 홈으로 이동
       _showPauseMessageSheet();
