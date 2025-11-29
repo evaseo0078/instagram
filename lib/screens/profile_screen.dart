@@ -199,50 +199,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
     print('🟢🟢🟢 ProfileScreen _onCreatePostTapped called');
     Navigator.pop(context);
 
-    // 갤러리에서 이미지 선택
+    // 1. 갤러리에서 이미지 선택
     final File? selectedImage = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const GalleryPickerScreen()),
     );
 
     if (selectedImage != null && mounted) {
-      print('🟢🟢🟢 Image selected, adding to posts directly');
+      print('🟢🟢🟢 Image selected, going to EditFilterScreen');
 
-      // 바로 게시물에 추가 (EditFilter, AddPost 화면 건너뛰기)
-      final myUser = MOCK_USERS['brown']!;
-      final newPost = PostModel(
-        username: myUser.username,
-        userProfilePicAsset: myUser.profilePicAsset,
-        images: [selectedImage.path],
-        caption: '',
-        comments: [],
-        likes: 0,
-        isLiked: false,
-        date: DateTime.now(),
+      // 2. EditFilterScreen으로 이동 (필터/오디오 선택)
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EditFilterScreen(imageFile: selectedImage),
+        ),
       );
 
-      print(
-          '🟢🟢🟢 Before insert - HOME_FEED_SCENARIO length: ${HOME_FEED_SCENARIO.length}');
+      // 3. EditFilterScreen에서 결과 받음 (caption)
+      if (result != null && mounted) {
+        final caption = result as String;
+        print('🟢🟢🟢 Received caption: $caption');
 
-      setState(() {
-        myUser.posts.insert(0, newPost);
-
-        // 홈 피드에도 추가 (맨 위에 표시)
-        HOME_FEED_SCENARIO.insert(
-            0,
-            FeedItem(
-              type: FeedItemType.post,
-              post: newPost,
-            ));
+        // 게시물 추가
+        final myUser = MOCK_USERS['brown']!;
+        final newPost = PostModel(
+          username: myUser.username,
+          userProfilePicAsset: myUser.profilePicAsset,
+          images: [selectedImage.path],
+          caption: caption,
+          comments: [],
+          likes: 0,
+          isLiked: false,
+          date: DateTime.now(),
+        );
 
         print(
-            '🟢🟢🟢 After insert - HOME_FEED_SCENARIO length: ${HOME_FEED_SCENARIO.length}');
-      });
+            '🟢🟢🟢 Before insert - HOME_FEED_SCENARIO length: ${HOME_FEED_SCENARIO.length}');
 
-      print('🟢🟢🟢 Post added successfully and added to home feed');
+        setState(() {
+          myUser.posts.insert(0, newPost);
 
-      // Pause 메시지 시트 표시 후 홈으로 이동
-      _showPauseMessageSheet();
+          // 홈 피드에도 추가 (맨 위에 표시)
+          HOME_FEED_SCENARIO.insert(
+              0,
+              FeedItem(
+                type: FeedItemType.post,
+                post: newPost,
+              ));
+
+          print(
+              '🟢🟢🟢 After insert - HOME_FEED_SCENARIO length: ${HOME_FEED_SCENARIO.length}');
+        });
+
+        print('🟢🟢🟢 Post added successfully and added to home feed');
+
+        // Pause 메시지 시트 표시 후 홈으로 이동
+        _showPauseMessageSheet();
+      }
     }
   }
 
