@@ -4,7 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:instagram/utils/colors.dart';
 
 class NotificationsScreen extends StatelessWidget {
-  const NotificationsScreen({super.key});
+  final bool hasConanComment;
+  final bool conanIsNew;
+  final String conanTime;
+  final String? conanThumbnail;
+  final VoidCallback? onConanTap;
+
+  const NotificationsScreen({
+    super.key,
+    this.hasConanComment = false,
+    this.conanIsNew = false,
+    this.conanTime = '1m',
+    this.conanThumbnail,
+    this.onConanTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +41,16 @@ class NotificationsScreen extends StatelessWidget {
             child: Text('Today',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ),
+          if (hasConanComment)
+            _buildNotificationItem(
+              profilePic: 'assets/images/profiles/conan.png',
+              text: 'conan commented on your post.',
+              time: conanTime,
+              trailingType: 'image',
+              trailingImage: conanThumbnail ?? 'assets/images/profiles/my_profile.png',
+              isNew: conanIsNew,
+              onTap: onConanTap,
+            ),
           _buildNotificationItem(
             profilePic:
                 'assets/images/profiles/ran.png', // haetbaaan (임시: ran 사진)
@@ -103,8 +126,11 @@ class NotificationsScreen extends StatelessWidget {
     required String trailingType, // 'image' or 'button'
     String? trailingImage,
     bool isFollowing = false,
+    bool isNew = false,
+    VoidCallback? onTap,
   }) {
     return ListTile(
+      onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: CircleAvatar(
         radius: 22,
@@ -112,7 +138,8 @@ class NotificationsScreen extends StatelessWidget {
       ),
       title: RichText(
         text: TextSpan(
-          style: const TextStyle(color: primaryColor, fontSize: 14),
+          style: TextStyle(
+              color: isNew ? Colors.blue : primaryColor, fontSize: 14),
           children: [
             TextSpan(
                 text: text.split(' ')[0],

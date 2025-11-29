@@ -121,7 +121,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
 
     // 이미지 미리보기 높이
     final imagePreviewHeight =
-        screenHeight - appBarHeight - statusBarHeight - gridHeight;
+        (screenHeight - appBarHeight - statusBarHeight - gridHeight) * 0.7;
 
     return Scaffold(
       appBar: AppBar(
@@ -132,8 +132,8 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
         title: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Recents', style: TextStyle(fontWeight: FontWeight.bold)),
-            Icon(Icons.arrow_drop_down),
+            Text('Recents'),
+            Icon(Icons.expand_more),
           ],
         ),
         centerTitle: false,
@@ -215,11 +215,11 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                 ),
                 // 하단 갤러리 가로 스크롤
                 Container(
-                  height: gridHeight - 48,
+                  height: gridHeight - 60,
                   color: backgroundColor,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
                     itemCount: _mediaList.length,
                     itemBuilder: (context, index) {
                       final asset = _mediaList[index];
@@ -228,8 +228,8 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                       return GestureDetector(
                         onTap: () => _onImageTapped(asset),
                         child: Container(
-                          width: 120,
-                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          width: 110,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
                           decoration: BoxDecoration(
                             border: isSelected
                                 ? Border.all(color: Colors.blue, width: 3)
@@ -246,6 +246,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                     },
                   ),
                 ),
+                const SizedBox(height: 16),
                 // 탭 바 (GALLERY / PHOTO / VIDEO) - 맨 밑
                 Container(
                   color: backgroundColor,

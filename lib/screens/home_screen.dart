@@ -11,11 +11,17 @@ import 'package:instagram/screens/notifications_screen.dart';
 class HomeScreen extends StatelessWidget {
   final bool showPostedNotification;
   final File? postedImage;
+  final bool hasNotificationDot;
+  final bool showNotificationBalloon;
+  final VoidCallback? onNotificationsTap;
 
   const HomeScreen({
     super.key,
     this.showPostedNotification = false,
     this.postedImage,
+    this.hasNotificationDot = false,
+    this.showNotificationBalloon = false,
+    this.onNotificationsTap,
   });
 
   @override
@@ -34,16 +40,54 @@ class HomeScreen extends StatelessWidget {
           },
         ),
         actions: [
-          IconButton(
-            icon: const Icon(CupertinoIcons.heart, color: Colors.black),
-            onPressed: () {
-              // ⭐️ 알림 화면으로 이동
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const NotificationsScreen()),
-              );
-            },
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                icon: const Icon(CupertinoIcons.heart, color: Colors.black),
+                onPressed: onNotificationsTap ??
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const NotificationsScreen()),
+                      );
+                    },
+              ),
+              if (hasNotificationDot)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                        color: Colors.red, shape: BoxShape.circle),
+                  ),
+                ),
+              if (showNotificationBalloon)
+                Positioned(
+                  right: -6,
+                  top: -2,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2))
+                      ],
+                    ),
+                    child: const Text('New comment',
+                        style:
+                            TextStyle(color: Colors.white, fontSize: 10)),
+                  ),
+                ),
+            ],
           ),
           IconButton(
             icon: const Icon(CupertinoIcons.paperplane, color: Colors.black),
@@ -57,37 +101,79 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       // ⭐️ 리스트가 비어있어도 "No posts yet" 문구를 띄우지 않고 그냥 빈 화면을 보여줍니다.
-      body: ListView.builder(
-        itemCount: HOME_FEED_SCENARIO.length,
-        itemBuilder: (context, index) {
-          final item = HOME_FEED_SCENARIO[index];
+      body: Column(
+        children: [
+          if (showPostedNotification)
+            Container(
+              margin: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3))
+                ],
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Colors.grey[300],
+                    backgroundImage: postedImage != null
+                        ? FileImage(postedImage!)
+                        : const AssetImage(
+                                'assets/images/profiles/my_profile.png')
+                            as ImageProvider,
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text('Posted! Way to go',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 14)),
+                  ),
+                  const Icon(Icons.check_circle, color: Colors.blue, size: 18),
+                ],
+              ),
+            ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: HOME_FEED_SCENARIO.length,
+              itemBuilder: (context, index) {
+                final item = HOME_FEED_SCENARIO[index];
 
-          switch (item.type) {
-            case FeedItemType.post:
-              if (item.post != null) {
-                return PostWidget(post: item.post!);
-              }
-              return const SizedBox.shrink();
+                switch (item.type) {
+                  case FeedItemType.post:
+                    if (item.post != null) {
+                      return PostWidget(post: item.post!);
+                    }
+                    return const SizedBox.shrink();
 
-            case FeedItemType.ad:
-              return const AdWidget();
+                  case FeedItemType.ad:
+                    return const AdWidget();
 
-            case FeedItemType.reel:
-              if (item.videoPath != null) {
-                return SingleReelWidget(videoPath: item.videoPath!);
-              }
-              return const SizedBox.shrink();
+                  case FeedItemType.reel:
+                    if (item.videoPath != null) {
+                      return SingleReelWidget(videoPath: item.videoPath!);
+                    }
+                    return const SizedBox.shrink();
 
-            case FeedItemType.suggestedReels:
-              if (item.multiVideoPaths != null) {
-                return SuggestedReelsWidget(videoPaths: item.multiVideoPaths!);
-              }
-              return const SizedBox.shrink();
+                  case FeedItemType.suggestedReels:
+                    if (item.multiVideoPaths != null) {
+                      return SuggestedReelsWidget(
+                          videoPaths: item.multiVideoPaths!);
+                    }
+                    return const SizedBox.shrink();
 
-            default:
-              return const SizedBox.shrink();
-          }
-        },
+                  default:
+                    return const SizedBox.shrink();
+                }
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

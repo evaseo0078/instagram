@@ -65,13 +65,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 24),
               const Text("Pause these messages?",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Divider(height: 1, color: Colors.grey),
               const SizedBox(height: 16),
               const Text(
-                "You'll stop seeing messages about sharing to Facebook for 90 days. You can turn on crossposting when you share a story, post or reel.",
+                "You'll stop seeing messages about sharing to Facebook for 90 days. You\ncan turn on crossposting when you share a story, post or reel.",
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 14, height: 1.4),
+                style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.35),
               ),
               const SizedBox(height: 24),
+              const Divider(height: 1, color: Colors.grey),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -81,7 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       backgroundColor: Colors.grey[200],
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25))),
+                          borderRadius: BorderRadius.circular(6))),
                   child: const Text("Pause",
                       style: TextStyle(
                           color: Colors.black,
@@ -89,7 +93,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           fontSize: 16)),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              const Divider(height: 1, color: Colors.grey),
               GestureDetector(
                 onTap: () {
                   Navigator.pop(context, true); // 시트 닫고 true 반환

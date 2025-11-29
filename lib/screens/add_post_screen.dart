@@ -19,9 +19,6 @@ class _AddPostScreenState extends State<AddPostScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showSharingInfoSheet();
-    });
 
     _focusNode.addListener(() {
       setState(() {
@@ -37,118 +34,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
     super.dispose();
   }
 
-  // Sharing posts 안내 시트
-  void _showSharingInfoSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(0, 12, 0, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 32),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Text("Sharing posts",
-                    style:
-                        TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(height: 24),
-              // 내용 생략 (UI 유지)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    _buildInfoItem(
-                        icon: Icons.add_box_outlined,
-                        text:
-                            "Your account is public, so anyone can discover your posts and follow\nyou."),
-                    const SizedBox(height: 20),
-                    _buildInfoItem(
-                        icon: Icons.cached,
-                        text:
-                            "Anyone can reuse all or part of your post in features like remixes,\nsequences, templates and stickers, and download your post as part\nof their reel or post."),
-                    const SizedBox(height: 20),
-                    _buildInfoItem(
-                        icon: Icons.settings_outlined,
-                        text:
-                            "You can turn off reuse for each post or change the default in your\nsettings."),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Divider(height: 1, thickness: 0.5, color: Colors.grey),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4))),
-                    child: const Text("OK",
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Center(
-                  child: Text("Manage settings",
-                      style: TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14))),
-              const SizedBox(height: 12),
-              const Center(
-                  child: Text("Learn more in the Help Center.",
-                      style: TextStyle(color: Colors.grey, fontSize: 12))),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildInfoItem({required IconData icon, required String text}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 28, color: Colors.black),
-        const SizedBox(width: 16),
-        Expanded(
-            child: Text(text,
-                style: const TextStyle(
-                    fontSize: 13, color: Colors.black87, height: 1.4))),
-      ],
-    );
-  }
-
-  // ⭐️ [Share 버튼] 텍스트 반환
+  // ⭐️ [Share 버튼] - 바로 포스팅
   void _onSharePressed() {
     final caption = _captionController.text;
     print('🔍 AddPostScreen Share pressed, caption: "$caption"');

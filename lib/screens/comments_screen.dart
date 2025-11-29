@@ -9,11 +9,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 class CommentsScreen extends StatefulWidget {
   final List<Map<String, dynamic>> commentsList;
   final String postOwnerName;
+  final VoidCallback? onExpandHeight;
 
   const CommentsScreen({
     super.key,
     required this.commentsList,
     this.postOwnerName = '',
+    this.onExpandHeight,
   });
 
   @override
@@ -24,6 +26,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
   final TextEditingController _commentController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   bool _isComposing = false;
+  Timer? _relativeTimeTicker;
 
   // 툴팁 상태
   bool _showLikeTooltip = false;
@@ -56,12 +59,16 @@ class _CommentsScreenState extends State<CommentsScreen> {
     Timer(const Duration(seconds: 5), () {
       if (mounted) setState(() => _showPublicContentTooltip = false);
     });
+
+    _relativeTimeTicker =
+        Timer.periodic(const Duration(seconds: 30), (_) => setState(() {}));
   }
 
   @override
   void dispose() {
     _commentController.dispose();
     _focusNode.dispose();
+    _relativeTimeTicker?.cancel();
     super.dispose();
   }
 
@@ -74,7 +81,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
         final newComment = {
           "username": "ph.brown",
           "comment": _commentController.text,
-          "time": "1s",
+          "createdAt": DateTime.now(),
           "isLiked": false,
           "isPosting": true,
           "isReply": _replyingToIndex != null,
@@ -98,6 +105,8 @@ class _CommentsScreenState extends State<CommentsScreen> {
             for (var comment in widget.commentsList) {
               if (comment["isPosting"] == true) {
                 comment["isPosting"] = false;
+                comment["createdAt"] = DateTime.now();
+                comment["time"] = "Just now";
               }
             }
           });
@@ -114,6 +123,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
           TextPosition(offset: _commentController.text.length));
     });
     _focusNode.requestFocus();
+    widget.onExpandHeight?.call();
   }
 
   void _toggleLike(int index) {
@@ -184,10 +194,31 @@ class _CommentsScreenState extends State<CommentsScreen> {
                         itemBuilder: (context, index) {
                           final commentData = widget.commentsList[index];
                           final bool isAuthor =
-                              commentData['username'] == widget.postOwnerName;
+                              commentData['username'] == widget.postOwnerName ||
+                                  commentData['username'] == 'ph.brown';
                           final bool isPosting =
                               commentData['isPosting'] ?? false;
                           final bool isReply = commentData['isReply'] ?? false;
+                          final DateTime? createdAt =
+                              commentData['createdAt'] as DateTime?;
+                          String timeText = '12s';
+                          if (isPosting) {
+                            timeText = 'Posting...';
+                          } else if (createdAt != null) {
+                            final diff =
+                                DateTime.now().difference(createdAt);
+                            if (diff.inMinutes < 1) {
+                              timeText = 'Just now';
+                            } else if (diff.inHours < 1) {
+                              timeText = '${diff.inMinutes}m';
+                            } else if (diff.inDays < 1) {
+                              timeText = '${diff.inHours}h';
+                            } else {
+                              timeText = '${diff.inDays}d';
+                            }
+                          } else if (commentData["time"] != null) {
+                            timeText = '${commentData["time"]}';
+                          }
 
                           return Padding(
                             padding: EdgeInsets.only(
@@ -219,19 +250,18 @@ class _CommentsScreenState extends State<CommentsScreen> {
                                           style: const TextStyle(
                                               color: primaryColor,
                                               fontSize: 14),
-                                          children: [
-                                            TextSpan(
-                                                text:
-                                                    '${commentData["username"]} ',
-                                                style: const TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold)),
-                                            TextSpan(
-                                                text:
-                                                    '${commentData["time"] ?? "12s"} ',
+                                      children: [
+                                        TextSpan(
+                                            text:
+                                                '${commentData["username"]} ',
+                                            style: const TextStyle(
+                                                fontWeight:
+                                                    FontWeight.bold)),
+                                        TextSpan(
+                                            text: '$timeText ',
                                                 style: const TextStyle(
                                                     color: secondaryColor)),
-                                            TextSpan(
+                                        TextSpan(
                                                 text: commentData["comment"]),
                                           ],
                                         ),
