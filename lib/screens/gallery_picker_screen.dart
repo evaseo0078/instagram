@@ -1,12 +1,10 @@
-// 📍 lib/screens/gallery_picker_screen.dart (image_picker로 교체)
+// 📍 lib/screens/gallery_picker_screen.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-// ⭐️ 1. image_picker import (크롬/에뮬레이터 호환)
-import 'package:image_picker/image_picker.dart';
+import 'package:photo_manager/photo_manager.dart';
+import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:instagram/utils/colors.dart';
-
-// (photo_manager 관련 import 모두 삭제)
 
 class GalleryPickerScreen extends StatefulWidget {
   const GalleryPickerScreen({super.key});
@@ -16,39 +14,102 @@ class GalleryPickerScreen extends StatefulWidget {
 }
 
 class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
+  List<AssetEntity> _mediaList = [];
+  AssetEntity? _selectedAsset;
   File? _selectedImageFile;
-  final ImagePicker _picker = ImagePicker();
+  bool _isLoading = true;
+  int _selectedTabIndex = 0; // 0: GALLERY, 1: PHOTO, 2: VIDEO
 
   @override
   void initState() {
     super.initState();
-    // + 버튼 누르면 바로 갤러리를 띄워서 사진 선택
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _pickImageFromGallery();
+    _loadGalleryImages();
+  }
+
+  // 갤러리 이미지 불러오기
+  Future<void> _loadGalleryImages() async {
+    final PermissionState ps = await PhotoManager.requestPermissionExtend();
+    if (!ps.isAuth) {
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+
+    final List<AssetPathEntity> albums = await PhotoManager.getAssetPathList(
+      type: RequestType.image,
+      onlyAll: true,
+    );
+
+    if (albums.isEmpty) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    final List<AssetEntity> media = await albums[0].getAssetListPaged(
+      page: 0,
+      size: 100,
+    );
+
+    setState(() {
+      _mediaList = media;
+      if (media.isNotEmpty) {
+        _selectedAsset = media[0];
+        _convertAssetToFile(media[0]);
+      }
+      _isLoading = false;
     });
   }
 
-  // ⭐️ 3. image_picker를 사용해 갤러리 열기
-  Future<void> _pickImageFromGallery() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-
-    if (image != null) {
+  // AssetEntity를 File로 변환
+  Future<void> _convertAssetToFile(AssetEntity asset) async {
+    final file = await asset.file;
+    if (file != null && mounted) {
       setState(() {
-        _selectedImageFile = File(image.path);
+        _selectedImageFile = file;
       });
-    } else {
-      // 갤러리에서 선택 안하고 닫으면, 이 화면 자체를 닫음
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
     }
   }
 
-  // ⭐️ 4. "Next" (게시물) / "Done" (프로필) 버튼
-  void _onDoneOrNextPressed() {
+  void _onDoneOrNextPressed() async {
     if (_selectedImageFile != null) {
       Navigator.of(context).pop(_selectedImageFile);
     }
+  }
+
+  void _onImageTapped(AssetEntity asset) {
+    setState(() {
+      _selectedAsset = asset;
+    });
+    _convertAssetToFile(asset);
+  }
+
+  Widget _buildTab(String title, int index) {
+    final isSelected = _selectedTabIndex == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedTabIndex = index;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isSelected ? Colors.black : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? Colors.black : Colors.grey,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -56,11 +117,11 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
     final screenHeight = MediaQuery.of(context).size.height;
     final appBarHeight = AppBar().preferredSize.height;
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    final bottomNavHeight = 120.0; // 하단 옵션 영역
+    final gridHeight = 200.0; // 하단 그리드 높이
 
-    // 이미지 미리보기 높이 = 전체 화면 - 앱바 - 하단영역
+    // 이미지 미리보기 높이
     final imagePreviewHeight =
-        screenHeight - appBarHeight - statusBarHeight - bottomNavHeight;
+        screenHeight - appBarHeight - statusBarHeight - gridHeight;
 
     return Scaffold(
       appBar: AppBar(
@@ -68,9 +129,9 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Row(
+        title: const Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
+          children: [
             Text('Recents', style: TextStyle(fontWeight: FontWeight.bold)),
             Icon(Icons.arrow_drop_down),
           ],
@@ -90,88 +151,120 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
           )
         ],
       ),
-      body: Column(
-        children: [
-          // 선택된 이미지 큰 미리보기
-          Container(
-            height: imagePreviewHeight,
-            width: double.infinity,
-            color: Colors.white,
-            child: _selectedImageFile == null
-                ? Center(
-                    child: TextButton(
-                      onPressed: _pickImageFromGallery,
-                      child: const Text('Choose from Gallery',
-                          style: TextStyle(fontSize: 16)),
-                    ),
-                  )
-                : Image.file(
-                    _selectedImageFile!,
-                    fit: BoxFit.contain, // 전체가 보이도록, 잘리지 않게
-                  ),
-          ),
-          // 하단 옵션 영역
-          Container(
-            height: bottomNavHeight,
-            color: backgroundColor,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
               children: [
-                // 왼쪽 버튼 (갤러리 재선택)
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _pickImageFromGallery,
-                    icon: const Icon(Icons.photo_library_outlined, size: 20),
-                    label: const Text('GALLERY'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black,
-                      side: const BorderSide(color: Colors.grey),
+                // 선택된 이미지 큰 미리보기
+                Stack(
+                  children: [
+                    Container(
+                      height: imagePreviewHeight,
+                      width: double.infinity,
+                      color: Colors.white,
+                      child: _selectedImageFile != null
+                          ? Image.file(
+                              _selectedImageFile!,
+                              fit: BoxFit.contain,
+                            )
+                          : const Center(child: Text('No image selected')),
                     ),
-                  ),
+                    // 좌측 하단 Picture 아이콘
+                    Positioned(
+                      left: 16,
+                      bottom: 16,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(
+                          Icons.image,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    // 우측 하단 SELECT MULTIPLE
+                    Positioned(
+                      right: 16,
+                      bottom: 16,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.library_add_check,
+                                color: Colors.white, size: 16),
+                            SizedBox(width: 4),
+                            Text(
+                              'SELECT MULTIPLE',
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                // 중간 버튼 (사진 촬영)
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final XFile? photo = await _picker.pickImage(
-                        source: ImageSource.camera,
+                // 하단 갤러리 가로 스크롤
+                Container(
+                  height: gridHeight - 48,
+                  color: backgroundColor,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    itemCount: _mediaList.length,
+                    itemBuilder: (context, index) {
+                      final asset = _mediaList[index];
+                      final isSelected = _selectedAsset?.id == asset.id;
+
+                      return GestureDetector(
+                        onTap: () => _onImageTapped(asset),
+                        child: Container(
+                          width: 120,
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          decoration: BoxDecoration(
+                            border: isSelected
+                                ? Border.all(color: Colors.blue, width: 3)
+                                : null,
+                          ),
+                          child: AssetEntityImage(
+                            asset,
+                            isOriginal: false,
+                            thumbnailSize: const ThumbnailSize.square(200),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       );
-                      if (photo != null) {
-                        setState(() {
-                          _selectedImageFile = File(photo.path);
-                        });
-                      }
                     },
-                    icon: const Icon(Icons.camera_alt_outlined, size: 20),
-                    label: const Text('PHOTO'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black,
-                      side: const BorderSide(color: Colors.grey),
-                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                // 오른쪽 버튼 (다중 선택)
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      // 다중 선택 기능 (옵션)
-                    },
-                    icon:
-                        const Icon(Icons.library_add_check_outlined, size: 20),
-                    label: const Text('SELECT MULTIPLE'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black,
-                      side: const BorderSide(color: Colors.grey),
-                    ),
+                // 탭 바 (GALLERY / PHOTO / VIDEO) - 맨 밑
+                Container(
+                  color: backgroundColor,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildTab('GALLERY', 0),
+                      ),
+                      Expanded(
+                        child: _buildTab('PHOTO', 1),
+                      ),
+                      Expanded(
+                        child: _buildTab('VIDEO', 2),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }

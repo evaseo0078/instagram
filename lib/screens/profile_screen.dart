@@ -16,7 +16,7 @@ import 'package:instagram/widgets/triangle_painter.dart';
 class ProfileScreen extends StatefulWidget {
   final UserModel user;
   final bool isMyProfile;
-  final VoidCallback? onUploadComplete;
+  final void Function(String imagePath, String caption)? onUploadComplete;
 
   const ProfileScreen({
     super.key,
@@ -31,34 +31,19 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isFollowing = false;
+  File? _pendingImageFile;
+  String? _pendingCaption;
 
   @override
   void initState() {
     super.initState();
     final myUser = MOCK_USERS['brown']!;
     _isFollowing = myUser.followingUsernames.contains(widget.user.username);
-
-    if (widget.onUploadComplete != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showPauseMessageSheet();
-      });
-    }
-  }
-
-  // ⭐️ 화면 갱신 시에도 체크 (Pause 시트 트리거)
-  @override
-  void didUpdateWidget(ProfileScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.onUploadComplete == null && widget.onUploadComplete != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showPauseMessageSheet();
-      });
-    }
   }
 
   // ⭐️ Pause 시트
-  void _showPauseMessageSheet() {
-    showModalBottomSheet(
+  Future<bool?> _showPauseMessageSheet() {
+    return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
@@ -91,12 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    if (widget.onUploadComplete != null) {
-                      widget.onUploadComplete!(); // ⭐️ 홈으로 이동
-                    }
-                  },
+                  onPressed: null, // 비활성화
                   style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey[200],
                       elevation: 0,
@@ -112,10 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
               GestureDetector(
                 onTap: () {
-                  Navigator.pop(context);
-                  if (widget.onUploadComplete != null) {
-                    widget.onUploadComplete!(); // ⭐️ 홈으로 이동
-                  }
+                  Navigator.pop(context, true); // 시트 닫고 true 반환
                 },
                 child: const Text("No thanks",
                     style: TextStyle(
@@ -174,18 +151,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildCreateOptionItem(
                   iconPath: 'assets/icons/Reel.svg',
                   text: 'Reel',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
                   showDivider: true),
               _buildCreateOptionItem(
                   iconPath: 'assets/icons/Post.svg',
                   text: 'Post',
-                  onTap: _onCreatePostTapped,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _onCreatePostTapped();
+                  },
                   showDivider: true),
               _buildCreateOptionItem(
                   iconPath: 'assets/icons/Share_only_to_profile.svg',
                   text: 'Share only to profile',
                   isNew: true,
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
                   showDivider: true),
               const SizedBox(height: 50),
             ],
@@ -197,7 +181,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _onCreatePostTapped() async {
     print('🟢🟢🟢 ProfileScreen _onCreatePostTapped called');
-    Navigator.pop(context);
 
     // 1. 갤러리에서 이미지 선택
     final File? selectedImage = await Navigator.push(
@@ -221,41 +204,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final caption = result as String;
         print('🟢🟢🟢 Received caption: $caption');
 
-        // 게시물 추가
-        final myUser = MOCK_USERS['brown']!;
-        final newPost = PostModel(
-          username: myUser.username,
-          userProfilePicAsset: myUser.profilePicAsset,
-          images: [selectedImage.path],
-          caption: caption,
-          comments: [],
-          likes: 0,
-          isLiked: false,
-          date: DateTime.now(),
-        );
+        // 이미지와 캡션을 저장하고 Pause 시트 표시 (아직 업로드 안 함)
+        _pendingImageFile = selectedImage;
+        _pendingCaption = caption;
 
-        print(
-            '🟢🟢🟢 Before insert - HOME_FEED_SCENARIO length: ${HOME_FEED_SCENARIO.length}');
+        print('🟢🟢🟢 Data stored, showing Pause sheet (not uploaded yet)');
 
-        setState(() {
-          myUser.posts.insert(0, newPost);
+        final bool? shouldUpload = await _showPauseMessageSheet();
 
-          // 홈 피드에도 추가 (맨 위에 표시)
-          HOME_FEED_SCENARIO.insert(
-              0,
-              FeedItem(
-                type: FeedItemType.post,
-                post: newPost,
-              ));
+        if (!mounted) return;
 
-          print(
-              '🟢🟢🟢 After insert - HOME_FEED_SCENARIO length: ${HOME_FEED_SCENARIO.length}');
-        });
+        if (shouldUpload == true &&
+            _pendingImageFile != null &&
+            _pendingCaption != null) {
+          final imagePath = _pendingImageFile!.path;
+          final captionToReturn = _pendingCaption!;
 
-        print('🟢🟢🟢 Post added successfully and added to home feed');
+          // 데이터 초기화 후 메인으로 전달
+          _pendingImageFile = null;
+          _pendingCaption = null;
 
-        // Pause 메시지 시트 표시 후 홈으로 이동
-        _showPauseMessageSheet();
+          if (widget.onUploadComplete != null) {
+            widget.onUploadComplete!(imagePath, captionToReturn);
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+          } else {
+            Navigator.pop(context, {
+              'imagePath': imagePath,
+              'caption': captionToReturn,
+            });
+          }
+        } else {
+          // 업로드 취소 시 데이터 정리
+          _pendingImageFile = null;
+          _pendingCaption = null;
+        }
       }
     }
   }
