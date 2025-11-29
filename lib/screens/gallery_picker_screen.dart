@@ -22,7 +22,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
   @override
   void initState() {
     super.initState();
-    // ⭐️ 2. 화면이 열리자마자 바로 갤러리를 띄웁니다 (영상 1:46)
+    // + 버튼 누르면 바로 갤러리를 띄워서 사진 선택
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _pickImageFromGallery();
     });
