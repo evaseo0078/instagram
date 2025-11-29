@@ -53,7 +53,15 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ⭐️ 5. UI를 영상과 유사하게 맞춤
+    final screenHeight = MediaQuery.of(context).size.height;
+    final appBarHeight = AppBar().preferredSize.height;
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+    final bottomNavHeight = 120.0; // 하단 옵션 영역
+
+    // 이미지 미리보기 높이 = 전체 화면 - 앱바 - 하단영역
+    final imagePreviewHeight =
+        screenHeight - appBarHeight - statusBarHeight - bottomNavHeight;
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -70,7 +78,6 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
         centerTitle: false,
         actions: [
           TextButton(
-            // ⭐️ 6. "Next" (영상 1:52)
             onPressed: _onDoneOrNextPressed,
             child: const Text(
               'Next',
@@ -85,28 +92,84 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
       ),
       body: Column(
         children: [
+          // 선택된 이미지 큰 미리보기
           Container(
-            height: 350,
-            color: Colors.grey[900],
+            height: imagePreviewHeight,
+            width: double.infinity,
+            color: Colors.white,
             child: _selectedImageFile == null
                 ? Center(
                     child: TextButton(
                       onPressed: _pickImageFromGallery,
-                      child: const Text('Choose from Gallery'),
+                      child: const Text('Choose from Gallery',
+                          style: TextStyle(fontSize: 16)),
                     ),
                   )
-                : Image.file(_selectedImageFile!, fit: BoxFit.contain),
+                : Image.file(
+                    _selectedImageFile!,
+                    fit: BoxFit.contain, // 전체가 보이도록, 잘리지 않게
+                  ),
           ),
-          // ⭐️ 7. 하단 그리드 뷰는 에뮬레이터/웹에서 구현이 복잡하므로
-          //     교수님 요구사항(영상 흐름)에 맞춰 메인 프리뷰에 집중합니다.
-          Expanded(
-            child: Container(
-              color: backgroundColor,
-              child: const Center(
-                child: Text('Image preview'),
-              ),
+          // 하단 옵션 영역
+          Container(
+            height: bottomNavHeight,
+            color: backgroundColor,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                // 왼쪽 버튼 (갤러리 재선택)
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickImageFromGallery,
+                    icon: const Icon(Icons.photo_library_outlined, size: 20),
+                    label: const Text('GALLERY'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black,
+                      side: const BorderSide(color: Colors.grey),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // 중간 버튼 (사진 촬영)
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final XFile? photo = await _picker.pickImage(
+                        source: ImageSource.camera,
+                      );
+                      if (photo != null) {
+                        setState(() {
+                          _selectedImageFile = File(photo.path);
+                        });
+                      }
+                    },
+                    icon: const Icon(Icons.camera_alt_outlined, size: 20),
+                    label: const Text('PHOTO'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black,
+                      side: const BorderSide(color: Colors.grey),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // 오른쪽 버튼 (다중 선택)
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      // 다중 선택 기능 (옵션)
+                    },
+                    icon:
+                        const Icon(Icons.library_add_check_outlined, size: 20),
+                    label: const Text('SELECT MULTIPLE'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black,
+                      side: const BorderSide(color: Colors.grey),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          )
+          ),
         ],
       ),
     );
