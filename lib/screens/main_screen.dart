@@ -1,14 +1,7 @@
-// 📍 lib/screens/main_screen.dart (전체 덮어쓰기)
-
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:instagram/data/mock_data.dart';
-import 'package:instagram/models/feed_item.dart';
-import 'package:instagram/models/post_model.dart';
-import 'package:instagram/screens/add_post_screen.dart';
-import 'package:instagram/screens/edit_filter_screen.dart';
-import 'package:instagram/screens/gallery_picker_screen.dart';
 import 'package:instagram/screens/home_screen.dart';
 import 'package:instagram/screens/profile_screen.dart';
 import 'package:instagram/screens/reels_screen.dart';
@@ -24,83 +17,69 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  final myUser = MOCK_USERS['brown']!;
+  late final myUser = MOCK_USERS['brown']!;
+  bool _showPostedNotification = false;
+  File? _lastPostedImage;
 
-  void _addPost(File image, String caption) {
+  @override
+  void initState() {
+    super.initState();
+    // myUser는 late final로 선언했으므로 여기서 사용 가능
+  }
+
+  void _goToHomeWithNotification() {
     setState(() {
-      // 1. 새 게시물
-      final newPost = PostModel(
-        username: myUser.username,
-        userProfilePicAsset: myUser.profilePicAsset,
-        images: [image.path],
-        caption: caption,
-        comments: [],
-        likes: 0,
-        date: DateTime.now(),
-      );
+      _selectedIndex = 0; // 홈 이동
+      _showPostedNotification = true;
+    });
 
-      // 2. 데이터 추가
-      myUser.posts.insert(0, newPost);
-      HOME_FEED_SCENARIO.insert(
-          0, FeedItem(type: FeedItemType.post, post: newPost));
+    Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _showPostedNotification = false);
+    });
 
-      // 3. 홈으로 이동
-      _selectedIndex = 0;
-
-      // ⭐️ 4. [자동 댓글] 5초 뒤 Conan
-      Timer(const Duration(seconds: 5), () {
-        if (mounted) {
-          setState(() {
-            newPost.likes++;
-            newPost.comments.add({
-              "username": "conan",
-              "comment": "Wow! Awesome photo! 🔥",
-              "time": "Just now",
-              "isLiked": false,
-            });
+    Timer(const Duration(seconds: 5), () {
+      if (mounted && myUser.posts.isNotEmpty) {
+        setState(() {
+          final recentPost = myUser.posts.first;
+          recentPost.likes++;
+          recentPost.comments.add({
+            "username": "conan",
+            "comment": "Wow! Awesome photo! 🔥",
+            "time": "Just now",
+            "isLiked": false,
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('conan commented: "Wow! Awesome photo! 🔥"'),
-                duration: Duration(seconds: 2)),
-          );
-        }
-      });
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('conan commented: "Wow! Awesome photo! 🔥"'),
+              duration: Duration(seconds: 2)),
+        );
+      }
     });
   }
 
   void _onTabTapped(int index) async {
+    print('🚀🚀🚀 NEW MAIN_SCREEN CODE - Tab tapped: $index');
+
+    // + 버튼(index 2) 클릭 시 프로필로 이동하고 업로드 플로우 시작
     if (index == 2) {
-      final File? originalFile = await Navigator.push(
+      print('🚀🚀🚀 Redirecting to Profile for upload');
+      // 프로필 화면으로 이동하되, 콜백을 전달하여 업로드 완료 시 사용
+      await Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const GalleryPickerScreen()),
+        MaterialPageRoute(
+          builder: (context) => ProfileScreen(
+            user: myUser,
+            isMyProfile: true,
+            onUploadComplete: _goToHomeWithNotification,
+          ),
+        ),
       );
-
-      if (originalFile != null) {
-        if (!mounted) return;
-        final File? filteredFile = await Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => EditFilterScreen(imageFile: originalFile)),
-        );
-
-        if (filteredFile != null && mounted) {
-          final String? caption = await Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => AddPostScreen(imageFile: filteredFile)),
-          );
-
-          if (caption != null) {
-            _addPost(filteredFile, caption);
-          }
-        }
-      }
-    } else {
-      setState(() {
-        _selectedIndex = index;
-      });
+      return;
     }
+
+    print('🚀🚀🚀 Normal tab switch to: $index');
+    setState(() => _selectedIndex = index);
   }
 
   @override
@@ -109,12 +88,16 @@ class _MainScreenState extends State<MainScreen> {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          const HomeScreen(),
+          HomeScreen(
+              showPostedNotification: _showPostedNotification,
+              postedImage: _lastPostedImage),
           const SearchScreen(),
           Container(),
           const ReelsScreen(),
-          // 내 프로필 전달
-          ProfileScreen(user: myUser, isMyProfile: true),
+          ProfileScreen(
+              user: myUser,
+              isMyProfile: true,
+              onUploadComplete: null), // 일반 탭에서는 null
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(

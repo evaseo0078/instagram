@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:instagram/data/mock_data.dart'; // ⭐️ 데이터 import
@@ -8,7 +9,14 @@ import 'package:video_player/video_player.dart';
 import 'package:instagram/screens/notifications_screen.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final bool showPostedNotification;
+  final File? postedImage;
+
+  const HomeScreen({
+    super.key,
+    this.showPostedNotification = false,
+    this.postedImage,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +25,6 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        // 로고 이미지 경로가 맞는지 확인 (안 맞으면 텍스트로 대체됨)
         title: Image.asset(
           'assets/images/ic_instagram_logo.png',
           height: 32,
